@@ -151,6 +151,7 @@ class WhiteVisualization():
             pass
 
 
+
 def main(filename="input/df_2.1.119.tsv"):#df_2.4.278.tsv"):#
     df = pd.read_csv(filename, sep="\t")
     w = White(df)
