@@ -84,7 +84,9 @@ class White:
         self.agg_grade_practice_ratio = {}
 
     def aggregate_all(self):
-        # The aggregate KCs function collapses within kcs, but do we need something to collapse the whole dataset??
+        #TODO: I think we need one more function!
+        # The aggregate KCs function collapses within kcs, but do we need something to collapse the whole dataset?
+        # We should add the practice, and average the KCS... I think
         return None
 
     def aggregate_kcs(self, type):
@@ -97,17 +99,23 @@ class White:
             kc_practices  = self.policy.practices[kc]
             kc_students   = self.policy.students[kc]
 
-            # Why is this so complicated?? As per email conversation, it doesn' even work!
-            #kc_grade_practice = np.divide(np.array(kc_grades, dtype=float), np.array(kc_practices + np.finfo(np.float32).eps, dtype=float))
 
 
             self.agg_grades[kc] = np.dot(kc_grades, kc_students) / sum(kc_students)
             self.agg_practices[kc] = np.dot(kc_practices, kc_students) / sum(kc_students)
 
+
+            #TODO: Check
+            #Not sure how we should calculate this ratio:
             agg_grade_practice_ratio1[kc] = np.sum(self.agg_grades[kc]) / np.sum(self.agg_practices[kc])
             agg_grade_practice_ratio2[kc] = np.sum(np.divide(self.agg_grades[kc], (self.agg_practices[kc])))
-
+            # But I think they are equivalent:
             assert(agg_grade_practice_ratio1[kc] == agg_grade_practice_ratio2[kc]), "Are this the same??"
+
+            # This is how you had it before, which I think it's very very complicated, and it looks like it wasn't working
+            #kc_grade_practice = np.divide(np.array(kc_grades, dtype=float), np.array(kc_practices + np.finfo(np.float32).eps, dtype=float))
+
+
             self.agg_grade_practice_ratio[kc] = agg_grade_practice_ratio1[kc]
 
 
@@ -127,6 +135,7 @@ class WhiteVisualization():
         self.white_obj = white_obj
 
 
+    # TODO: Fix bug that interpolates thresholds
     def graph_wuc(self, figure_name="wuc{}.png"):
         for kc in self.white_obj.policy.grades.keys():
             fig, ax = pl.subplots()
@@ -135,7 +144,7 @@ class WhiteVisualization():
             x = self.white_obj.policy.thresholds[kc]
             y = self.white_obj.policy.grades[kc]
             pl.scatter(x, y, color='green')
-            pl.plot(x, y,color='green')
+            pl.plot(x, y,color='green', linewidth=3)
             #pl.xticks(x, x, fontsize=5, rotation=45)  # 5
             pl.yticks(color='green')  # 5
             pl.ylim([0, 1])
@@ -147,7 +156,7 @@ class WhiteVisualization():
             ax2.yaxis.tick_right()
             y = self.white_obj.policy.practices[kc]
             pl.scatter(x, y, color='red')
-            pl.plot(x, y, color='red')
+            pl.plot(x, y, color='red', linewidth=3)
             pl.yticks(color='red')  # 5
             pl.ylim([0, max(y)])
             ax2.set_ylabel("expected practice", color="red", fontsize=12)
@@ -157,11 +166,13 @@ class WhiteVisualization():
             pl.close(fig)
 
 
-    def graph_path(self, filename, threshold=None):
+    '''white_objs is a list of white objects... it may only have a single object'''
+    def graph_path(self, white_objs, threshold=None):
         ''' this should save the image to file '''
         if threshold == None:
             # draw path for aggregated
-            pass
+            for white in white_objs:
+                pass
         else:
             # draw a single path
             pass
