@@ -10,8 +10,9 @@ class SingleKCPolicy:
         self.grades = {}
         self.practices = {}
         self.students = {}
-        #JPG: I think this had a bug with our contract. I think we need to sort (?)
-        self.df = df.sort(columns=["kc", "student", "timestep"])
+        #JPG: Do we need to sort??
+        self.df = df
+        #self.df = df.sort(columns=["kc", "student", "timestep"])
 
 
     @staticmethod
@@ -32,9 +33,9 @@ class SingleKCPolicy:
         if len(df_before_threshold) > 0:
             seq_npractice = df_before_threshold.groupby(by=["student"], sort=False).size()  # return Series
             #TODO: Consider using mean instead of median?
-            stats = seq_npractice.describe(percentiles=[.25, .50, .75, .90])  # its also a series
-            practice = int(stats["50%"])
-            # mean = stats["mean"]
+            #stats = seq_npractice.describe(percentiles=[.25, .50, .75, .90])  # its also a series
+            #practice = int(stats["50%"])
+            practice = seq_npractice.mean()
         return practice
 
 
@@ -99,11 +100,8 @@ class White:
             kc_practices  = self.policy.practices[kc]
             kc_students   = self.policy.students[kc]
 
-
-
             self.agg_grades[kc] = np.dot(kc_grades, kc_students) / sum(kc_students)
             self.agg_practices[kc] = np.dot(kc_practices, kc_students) / sum(kc_students)
-
 
             #TODO: Check
             #Not sure how we should calculate this ratio:
