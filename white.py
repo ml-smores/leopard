@@ -192,16 +192,24 @@ def pretty(x):
     else:
         return str(x)
 
-def main(filename="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#
-#def main(filename="example_data/example1.csv", sep=","):
-    df = pd.read_csv(filename, sep=sep)
-    w = White(df)
-    w.aggregate_kcs("weighted")
-    print w
+def main(filenames="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#
+#def main(filenames="example_data/example1.csv", sep=","):
 
-    v = WhiteVisualization(w)
-    v.graph_wuc()
+    whites = []
+    for filename in filenames.split(","):
+        print filename
+        df = pd.read_csv(filename, sep=sep)
+        w = White(df)
+        w.aggregate_kcs("weighted")
 
+        print w
+        whites.append(w)
+        v = WhiteVisualization(w)
+        v.graph_wuc()
+
+    print "done"
+    # If you need to do multi-dataset comparison do them here:
+    #foo(whites)
 
 if __name__ == "__main__":
     import sys
