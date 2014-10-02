@@ -3,31 +3,15 @@ import numpy as np
 from matplotlib import pyplot as pl, pyplot, cm, colors
 
 
-class White:
-    aggregation_types = ["weighted"]
-    policies = ["single_kc"]
-
+class SingleKCPolicy:
     def __init__(self, df):
         """ df has a column for student, kc, timestep, pcorrect, outcome """
         self.thresholds = {}
         self.grades = {}
         self.practices = {}
         self.students = {}
-        self.agg_grades = {}
-        self.agg_practices = {}
-        self.agg_grade_practice = {}
-        self.df = df
-
-
-    def __repr__(self):
-        return 'thresholds=\t' + pretty(self.thresholds) + \
-               '\ngrades=\t' + pretty(self.grades) + \
-               '\npractices=\t' + pretty(self.practices) + \
-               "\nstudents=\t" + pretty(self.students) + \
-               "\nagg_grades=\t" + pretty(self.agg_grades) + \
-               "\nagg_practices=\t" + pretty(self.agg_practices) + \
-               "\nagg_grade_practice=\t" + pretty(self.agg_grade_practice)
-
+        #JPG: I think this had a bug with our contract. I think we need to sort (?)
+        self.df = df.sort(columns=["kc", "student", "timestep"])
 
 
     @staticmethod
@@ -48,7 +32,7 @@ class White:
         if len(df_before_threshold) > 0:
             seq_npractice = df_before_threshold.groupby(by=["student"], sort=False).size()  # return Series
             stats = seq_npractice.describe(percentiles=[.25, .50, .75, .90])  # its also a series
-            practice = stats["50%"]
+            practice = int(stats["50%"])
             # mean = stats["mean"]
         return practice
 
@@ -65,16 +49,11 @@ class White:
         return thresholds
 
 
-    def calculate(self, policy="single_kc"):
-        assert policy in self.policies, " We only support " + list(self.policies)
-        self.grades = {}
-        self.practices = {}
-        self.students = {}
-
+    def calculate(self):
         kcs = self.df["kc"].unique()
         for kc in kcs:
             df_kc = self.df[self.df["kc"] == kc]
-            kc_thresholds = White.get_thresholds(df_kc)
+            kc_thresholds = SingleKCPolicy.get_thresholds(df_kc)
             self.thresholds[kc] = kc_thresholds
             previous_grade = 0
             previous_practice = 0
@@ -82,11 +61,11 @@ class White:
             kc_practices = []
             kc_students = []
             for threshold in kc_thresholds:
-                grade, nstu = White.expected_grade(df_kc, threshold)
+                grade, nstu = SingleKCPolicy.expected_grade(df_kc, threshold)
                 kc_grades.append(max(grade, previous_grade))
                 kc_students.append(nstu)  # of students that reach this threshold
                 previous_grade = grade
-                practice = White.expected_practice(df_kc, threshold)
+                practice = SingleKCPolicy.expected_practice(df_kc, threshold)
                 kc_practices.append(max(practice, previous_practice))
                 previous_practice = practice
             self.grades[kc] = kc_grades
@@ -94,17 +73,51 @@ class White:
             self.students[kc] = kc_students
 
 
-    def aggregate(self, type="weighted"):
-        assert type in self.aggregation_types, "Unknown parameter"
-        for kc in self.grades.keys():
-            kc_grades = self.grades[kc]
-            kc_practices = self.practices[kc]
-            kc_students = self.students[kc]
-            kc_grade_practice = np.divide(np.array(kc_grades, dtype=float), np.array(kc_practices + np.finfo(np.float32).eps, dtype=float))
+class White:
+    aggregation_types = "weighted"
+    def __init__(self, df):
+        self.policy = SingleKCPolicy(df)
+        self.policy.calculate()
+        self.agg_grades = {}
+        self.agg_practices = {}
+        self.agg_grade_practice_ratio = {}
+
+    def aggregate_all(self):
+        # The aggregate KCs function collapses within kcs, but do we need something to collapse the whole dataset??
+        return None
+
+    def aggregate_kcs(self, type):
+        assert type in White.aggregation_types, "Unknown parameter"
+
+        agg_grade_practice_ratio1 = {}
+        agg_grade_practice_ratio2 = {}
+        for kc in self.policy.grades.keys():
+            kc_grades     = self.policy.grades[kc]
+            kc_practices  = self.policy.practices[kc]
+            kc_students   = self.policy.students[kc]
+
+            # Why is this so complicated?? As per email conversation, it doesn' even work!
+            #kc_grade_practice = np.divide(np.array(kc_grades, dtype=float), np.array(kc_practices + np.finfo(np.float32).eps, dtype=float))
+
+
             self.agg_grades[kc] = np.dot(kc_grades, kc_students) / sum(kc_students)
             self.agg_practices[kc] = np.dot(kc_practices, kc_students) / sum(kc_students)
-            #self.agg_grade_practice[kc] = np.dot(kc_grade_practice[1:], kc_students[1:]) / sum(kc_students[1:])
-            self.agg_grade_practice[kc] = np.dot(kc_grade_practice, kc_students) / sum(kc_students)
+
+            agg_grade_practice_ratio1[kc] = np.sum(self.agg_grades[kc]) / np.sum(self.agg_practices[kc])
+            agg_grade_practice_ratio2[kc] = np.sum(np.divide(self.agg_grades[kc], (self.agg_practices[kc])))
+
+            assert(agg_grade_practice_ratio1[kc] == agg_grade_practice_ratio2[kc]), "Are this the same??"
+            self.agg_grade_practice_ratio[kc] = agg_grade_practice_ratio1[kc]
+
+
+    def __repr__(self):
+        return 'thresholds=\t' + pretty(self.policy.thresholds) + \
+               '\ngrades=\t' + pretty(self.policy.grades) + \
+               '\npractices=\t' + pretty(self.policy.practices) + \
+               '\nstudents=\t' + pretty(self.policy.students) + \
+               '\nagg_grades=\t' + pretty(self.agg_grades) + \
+               '\nagg_practices=\t' + pretty(self.agg_practices) + \
+               '\nagg_grade_practice=\t' + pretty(self.agg_grade_practice_ratio)
 
 
 class WhiteVisualization():
@@ -114,12 +127,12 @@ class WhiteVisualization():
 
 
     def graph_wuc(self, figure_name="wuc{}.png"):
-        for kc in self.white_obj.grades.keys():
+        for kc in self.white_obj.policy.grades.keys():
             fig, ax = pl.subplots()
             fig.subplots_adjust(bottom=0.12)
 
-            x = self.white_obj.thresholds[kc]
-            y = self.white_obj.grades[kc]
+            x = self.white_obj.policy.thresholds[kc]
+            y = self.white_obj.policy.grades[kc]
             pl.scatter(x, y, color='green')
             pl.plot(x, y,color='green')
             #pl.xticks(x, x, fontsize=5, rotation=45)  # 5
@@ -128,9 +141,10 @@ class WhiteVisualization():
             pl.xlabel("threshold", fontsize=12)
             pl.ylabel("expected grade", color='green', fontsize=12)
 
+            #JPG: shouldn' be a twin graph... they are on different scales
             ax2 = ax.twinx()
             ax2.yaxis.tick_right()
-            y = self.white_obj.practices[kc]
+            y = self.white_obj.policy.practices[kc]
             pl.scatter(x, y, color='red')
             pl.plot(x, y, color='red')
             pl.yticks(color='red')  # 5
@@ -165,15 +179,14 @@ def pretty(x):
         return "%4.2f" % x
     else:
         return str(x)
-def main(filename="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#
-#def main(filename="example_data/example1.csv", sep=",")
+
+#def main(filename="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#
+def main(filename="example_data/example1.csv", sep=","):
     df = pd.read_csv(filename, sep=sep)
-    print df.columns
-    # should sort the df ?
     w = White(df)
-    w.calculate()
-    w.aggregate()
+    w.aggregate_kcs("weighted")
     print w
+
     v = WhiteVisualization(w)
     v.graph_wuc()
 
