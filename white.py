@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import sklearn.metrics as metrics
 from matplotlib import pyplot as pl, pyplot, cm, colors
 
 
@@ -21,13 +20,14 @@ class White:
 
 
     def __repr__(self):
-        return 'thresholds=\t' + str(self.thresholds) + \
-               '\ngrades=\t' + str(self.grades) + \
-               '\npractices=\t' + str(self.practices) + \
-               "\nstudents=\t" + str(self.students) + \
-               "\nagg_grades=\t" + str(self.agg_grades) + \
-               "\nagg_practices=\t" + str(self.agg_practices) + \
-               "\nagg_grade_practice=\t" + str(self.agg_grade_practice)
+        return 'thresholds=\t' + pretty(self.thresholds) + \
+               '\ngrades=\t' + pretty(self.grades) + \
+               '\npractices=\t' + pretty(self.practices) + \
+               "\nstudents=\t" + pretty(self.students) + \
+               "\nagg_grades=\t" + pretty(self.agg_grades) + \
+               "\nagg_practices=\t" + pretty(self.agg_practices) + \
+               "\nagg_grade_practice=\t" + pretty(self.agg_grade_practice)
+
 
 
     @staticmethod
@@ -112,7 +112,8 @@ class WhiteVisualization():
     def __init__(self, white_obj):
         self.white_obj = white_obj
 
-    def graph_wuc(self, figure_name="images/wuc", figure_format=".png"):
+
+    def graph_wuc(self, figure_name="wuc{}.png"):
         for kc in self.white_obj.grades.keys():
             fig, ax = pl.subplots()
             fig.subplots_adjust(bottom=0.12)
@@ -137,7 +138,7 @@ class WhiteVisualization():
             ax2.set_ylabel("expected practice", color="red", fontsize=12)
 
             pl.xlim([0, 1])
-            pl.savefig(figure_name + "_" + kc + figure_format)
+            pl.savefig(figure_name.format(kc))
             pl.close(fig)
 
 
@@ -151,9 +152,24 @@ class WhiteVisualization():
             pass
 
 
+def pretty(x):
 
-def main(filename="input/df_2.1.119.tsv"):#df_2.4.278.tsv"):#
-    df = pd.read_csv(filename, sep="\t")
+    if isinstance(x, dict):
+        ans = []
+        for (k, v) in x.items():
+            ans.append("{}:{}".format(k, pretty(v)))
+        return "{" + ",".join(ans) + "}"
+    elif isinstance(x,list):
+        return "[" + ", ".join([pretty(e) for e in x] ) + "]"
+    elif isinstance(x, float):
+        return "%4.2f" % x
+    else:
+        return str(x)
+def main(filename="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#
+#def main(filename="example_data/example1.csv", sep=",")
+    df = pd.read_csv(filename, sep=sep)
+    print df.columns
+    # should sort the df ?
     w = White(df)
     w.calculate()
     w.aggregate()

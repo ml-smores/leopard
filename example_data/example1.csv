@@ -1,0 +1,13 @@
+student,kc,timestep,pcorrect,outcome
+jose,math, 1, 0.1, 0
+jose,math, 2, 0.2, 0
+jose,math, 3, 0.3, 0
+jose,math, 4, 0.4, 1
+jose,math, 5, 0.5, 1
+jose,math, 6, 0.6, 1
+cloud,math, 1, 0.1, 0
+cloud,math, 2, 0.2, 0
+cloud,math, 3, 0.3, 0
+cloud,math, 4, 0.4, 0
+cloud,math, 5, 0.5, 1
+cloud,math, 6, 0.6, 1
