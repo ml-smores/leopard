@@ -19,6 +19,7 @@ class SingleKCPolicy:
     def expected_grade(df_kc, threshold):
         grade = 0.0
         nstu = 0
+        #TODO: There is a bug here, I think.  We need to consider timesteps.
         df_after_threshold = df_kc[df_kc["pcorrect"] >= threshold]
         if len(df_after_threshold) > 0:
             grade = np.sum(df_after_threshold["outcome"]) / (1.0 * len(df_after_threshold["outcome"]))
@@ -29,10 +30,12 @@ class SingleKCPolicy:
     @staticmethod
     def expected_practice(df_kc, threshold):
         practice = 0
+        #TODO: There is a bug here, I think.  We need to consider timesteps.
+        # Imagine that the threshold changed at timestep = 3, but then pcorrect decreased again at timestep=5
         df_before_threshold = df_kc[df_kc["pcorrect"] <= threshold]
         if len(df_before_threshold) > 0:
             seq_npractice = df_before_threshold.groupby(by=["student"], sort=False).size()  # return Series
-            #TODO: Consider using mean instead of median?
+            #JPG: changed to mean instead of median
             #stats = seq_npractice.describe(percentiles=[.25, .50, .75, .90])  # its also a series
             #practice = int(stats["50%"])
             practice = seq_npractice.mean()
@@ -189,8 +192,8 @@ def pretty(x):
     else:
         return str(x)
 
-#def main(filename="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#
-def main(filename="example_data/example1.csv", sep=","):
+def main(filename="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#
+#def main(filename="example_data/example1.csv", sep=","):
     df = pd.read_csv(filename, sep=sep)
     w = White(df)
     w.aggregate_kcs("weighted")
