@@ -179,7 +179,6 @@ class WhiteVisualization():
 
 
 def pretty(x):
-
     if isinstance(x, dict):
         ans = []
         for (k, v) in x.items():
