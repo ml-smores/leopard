@@ -31,6 +31,7 @@ class SingleKCPolicy:
         df_before_threshold = df_kc[df_kc["pcorrect"] <= threshold]
         if len(df_before_threshold) > 0:
             seq_npractice = df_before_threshold.groupby(by=["student"], sort=False).size()  # return Series
+            #TODO: Consider using mean instead of median?
             stats = seq_npractice.describe(percentiles=[.25, .50, .75, .90])  # its also a series
             practice = int(stats["50%"])
             # mean = stats["mean"]
