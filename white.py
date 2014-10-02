@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as pl, pyplot, cm, colors
-
+import os
 
 class SingleKCPolicy:
     def __init__(self, df):
@@ -192,20 +192,23 @@ def pretty(x):
     else:
         return str(x)
 
-def main(filenames="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#
-#def main(filenames="example_data/example1.csv", sep=","):
+#def main(filenames="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#
+def main(filenames="example_data/example1.csv", sep=","):
 
     whites = []
-    for filename in filenames.split(","):
-        print filename
-        df = pd.read_csv(filename, sep=sep)
+    for input in filenames.split(","):
+
+        print input
+
+        df = pd.read_csv(input, sep=sep)
         w = White(df)
         w.aggregate_kcs("weighted")
-
         print w
         whites.append(w)
         v = WhiteVisualization(w)
-        v.graph_wuc()
+
+        output = os.path.splitext(input)[0] + "_{}.png"
+        v.graph_wuc(output)
 
     print "done"
     # If you need to do multi-dataset comparison do them here:
