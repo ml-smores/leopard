@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as pl, pyplot, cm, colors
-
+import os
 
 class SingleKCPolicy:
     def __init__(self, df):
@@ -10,14 +10,16 @@ class SingleKCPolicy:
         self.grades = {}
         self.practices = {}
         self.students = {}
-        #JPG: I think this had a bug with our contract. I think we need to sort (?)
-        self.df = df# = df.sort(columns=["kc", "student", "timestep"])
+        #JPG: Do we need to sort??
+        self.df = df
+        #self.df = df.sort(columns=["kc", "student", "timestep"])
 
 
     @staticmethod
     def expected_grade(df_kc, threshold):
         grade = 0.0
         nstu = 0
+        #TODO: There is a bug here, I think.  We need to consider timesteps.
         df_after_threshold = df_kc[df_kc["pcorrect"] >= threshold]
         if len(df_after_threshold) > 0:
             grade = np.sum(df_after_threshold["outcome"]) / (1.0 * len(df_after_threshold["outcome"]))
@@ -28,13 +30,16 @@ class SingleKCPolicy:
     @staticmethod
     def expected_practice(df_kc, threshold):
         practice = 0
+        #TODO: There is a bug here, I think.  We need to consider timesteps.
+        # Imagine that the threshold changed at timestep = 3, but then pcorrect decreased again at timestep=5
         df_before_threshold = df_kc[df_kc["pcorrect"] <= threshold]
         if len(df_before_threshold) > 0:
             seq_npractice = df_before_threshold.groupby(by=["student"], sort=False).size()  # return Series
             stats = seq_npractice.describe(percentiles=[.25, .50, .75, .90])  # its also a series
-            # practice = int(stats["50%"])
             #TODO: Consider int or float?
             practice = stats["mean"]
+            #practice = int(stats["50%"])
+            practice = seq_npractice.mean()
         return practice
 
 
@@ -84,7 +89,7 @@ class White:
         self.agg_practice = {} #scalar
         self.agg_grades = {}
         self.agg_practices = {}
-        self.agg_grade_practice_ratio = {}
+        #self.agg_grade_practice_ratio = {}
         self.grade_all = 0.0
         self.practice_all = 0.0
         self.ratio_all = 0.0
@@ -151,27 +156,28 @@ class White:
             self.agg_grade[kc] = np.dot(kc_grades, kc_students) / sum(kc_students)
             self.agg_practice[kc] = np.dot(kc_practices, kc_students) / sum(kc_students)
 
-            agg_grade_practice_ratio1[kc] = np.sum(self.agg_grades[kc]) / np.sum(self.agg_practices[kc])
-            ind_ratio = np.divide(self.agg_grades[kc], (self.agg_practices[kc]))
-            ind_ratio[np.isnan(ind_ratio)] = 0
-            ind_ratio[np.isinf(ind_ratio)] = 0
-            agg_grade_practice_ratio2[kc] = np.mean(ind_ratio)#np.sum(np.divide(self.agg_grades[kc], (self.agg_practices[kc])))
+            #TODO: Check
+            #Not sure how we should calculate this ratio:
+            # agg_grade_practice_ratio1[kc] = np.sum(self.agg_grades[kc]) / np.sum(self.agg_practices[kc])
+            # ind_ratio = np.divide(self.agg_grades[kc], (self.agg_practices[kc]))
+            # ind_ratio[np.isnan(ind_ratio)] = 0
+            # ind_ratio[np.isinf(ind_ratio)] = 0
+            # agg_grade_practice_ratio2[kc] = np.mean(ind_ratio)#np.sum(np.divide(self.agg_grades[kc], (self.agg_practices[kc])))
             #assert(agg_grade_practice_ratio1[kc] == agg_grade_practice_ratio2[kc]), "Are this the same??"
-
             # This is how you had it before, which I think it's very very complicated, and it looks like it wasn't working
             #kc_grade_practice = np.divide(np.array(kc_grades, dtype=float), np.array(kc_practices + np.finfo(np.float32).eps, dtype=float))
-            self.agg_grade_practice_ratio[kc] = agg_grade_practice_ratio1[kc]
-        print "agg_grade_practice_ratio2:", pretty(agg_grade_practice_ratio2)
+            #self.agg_grade_practice_ratio[kc] = agg_grade_practice_ratio1[kc]
+        #print "agg_grade_practice_ratio2:", pretty(agg_grade_practice_ratio2), "\n"
 
 
     def __repr__(self):
+        #'\nagg_grade_practice_ratio=\t' + pretty(self.agg_grade_practice_ratio) + \
         return 'thresholds=\t' + pretty(self.policy.thresholds) + \
                '\ngrades=\t' + pretty(self.policy.grades) + \
                '\npractices=\t' + pretty(self.policy.practices) + \
                '\nstudents=\t' + pretty(self.policy.students) + \
                '\nagg_grades=\t' + pretty(self.agg_grades) + \
                '\nagg_practices=\t' + pretty(self.agg_practices) + \
-               '\nagg_grade_practice_ratio=\t' + pretty(self.agg_grade_practice_ratio) + \
                '\nagg_grade=\t' + pretty(self.agg_grade) + \
                '\nagg_practice=\t' + pretty(self.agg_practice) + \
                '\nagg_student=\t' + pretty(self.agg_student) + \
@@ -258,18 +264,30 @@ def pretty(x):
     else:
         return str(x)
 
-#def main(filename="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#
-def main(filename="example_data/tom_predictions_chapter1.tsv", sep="\t", kctype="tom"):
-    df = pd.read_csv(filename, sep=sep)
-    w = White(df)
-    w.aggregate_each_kc("weighted")
-    w.aggregate_all_by_kc()
-    print w
 
-    v = WhiteVisualization(w)
-    v.graph_wuc()
-    v.graph_grade_vs_practice(kctype=kctype)
+#def main(filenames="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#tom_predictions_chapter1
+def main(filenames="example_data/tom_predictions_chapter1.tsv", sep="\t"):
 
+    whites = []
+    for input in filenames.split(","):
+
+        print input
+
+        df = pd.read_csv(input, sep=sep)
+        w = White(df)
+        w.aggregate_each_kc("weighted")
+        w.aggregate_all_by_kc()
+        print w
+        whites.append(w)
+        v = WhiteVisualization(w)
+
+        output = os.path.splitext(input)[0] + "_{}.png"
+        v.graph_wuc(output)
+        v.graph_grade_vs_practice()
+
+    print "done"
+    # If you need to do multi-dataset comparison do them here:
+    #foo(whites)
 
 if __name__ == "__main__":
     import sys
