@@ -3,6 +3,7 @@ import numpy as np
 from matplotlib import pyplot as pl, pyplot, cm, colors
 import os
 
+
 class SingleKCPolicy:
     def __init__(self, df):
         """ df has a column for student, kc, timestep, pcorrect, outcome """
@@ -10,35 +11,32 @@ class SingleKCPolicy:
         self.grades = {}
         self.practices = {}
         self.students = {}
-        #JPG: Do we need to sort??
-        self.df = df
-        #self.df = df.sort(columns=["kc", "student", "timestep"])
+        # JPG: Do we need to sort??
+        self.df = df #self.df = df.sort(columns=["kc", "student", "timestep"])
 
 
     @staticmethod
-    def expected_grade(df_kc, threshold):
+    def grade(df_kc, threshold):
         grade = 0.0
-        nstu = 0
-        #TODO: There is a bug here, I think.  We need to consider timesteps.
+        student = 0
+        # TODO: There is a bug here, I think.  We need to consider timesteps.
         df_after_threshold = df_kc[df_kc["pcorrect"] >= threshold]
         if len(df_after_threshold) > 0:
             grade = np.sum(df_after_threshold["outcome"]) / (1.0 * len(df_after_threshold["outcome"]))
-            nstu = df_after_threshold.student.nunique()
-        return grade, nstu
+            student = df_after_threshold.student.nunique()
+        return grade, student
 
 
     @staticmethod
-    def expected_practice(df_kc, threshold):
+    def practice(df_kc, threshold):
         practice = 0
-        #TODO: There is a bug here, I think.  We need to consider timesteps.
+        # TODO: There is a bug here, I think.  We need to consider timesteps.
         # Imagine that the threshold changed at timestep = 3, but then pcorrect decreased again at timestep=5
-        df_before_threshold = df_kc[df_kc["pcorrect"] <= threshold]
+        df_before_threshold = df_kc[df_kc["pcorrect"] < threshold]
         if len(df_before_threshold) > 0:
             seq_npractice = df_before_threshold.groupby(by=["student"], sort=False).size()  # return Series
             stats = seq_npractice.describe(percentiles=[.25, .50, .75, .90])  # its also a series
             #TODO: Consider int or float?
-            practice = stats["mean"]
-            #practice = int(stats["50%"])
             practice = seq_npractice.mean()
         return practice
 
@@ -53,13 +51,12 @@ class SingleKCPolicy:
             thresholds.append(1.0)
         return thresholds
 
-
     def calculate(self):
         kcs = self.df["kc"].unique()
-        #kcs = ["1_5_easy"]
+        #kcs = ["1.3.2.61_16"]
         for kc in kcs:
             df_kc = self.df[self.df["kc"] == kc]
-            kc_thresholds = SingleKCPolicy.get_thresholds(df_kc)
+            kc_thresholds = SingleKCPolicy.get_thresholds(df_kc)  # [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]#
             self.thresholds[kc] = kc_thresholds
             previous_grade = 0
             previous_practice = 0
@@ -67,11 +64,11 @@ class SingleKCPolicy:
             kc_practices = []
             kc_students = []
             for threshold in kc_thresholds:
-                grade, nstu = SingleKCPolicy.expected_grade(df_kc, threshold)
+                grade, student = SingleKCPolicy.grade(df_kc, threshold)
                 kc_grades.append(max(grade, previous_grade))
-                kc_students.append(nstu)  # of students that reach this threshold
+                kc_students.append(student)  # of students that reach this threshold
                 previous_grade = max(grade, previous_grade)
-                practice = SingleKCPolicy.expected_practice(df_kc, threshold)
+                practice = SingleKCPolicy.practice(df_kc, threshold)
                 kc_practices.append(max(practice, previous_practice))
                 previous_practice = max(practice, previous_practice)
             self.grades[kc] = kc_grades
@@ -80,115 +77,103 @@ class SingleKCPolicy:
 
 
 class White:
-    aggregation_types = "weighted"
+    aggregation_types = ["weighted", "uniform"]
+    aggregation_types_for_all = ["by_kc", "by_threshold"]
+
     def __init__(self, df):
-        self.policy = SingleKCPolicy(df)
-        self.policy.calculate()
-        self.agg_student = {} #scalar
-        self.agg_grade = {} #scalar
-        self.agg_practice = {} #scalar
+        self.policy = None
+        self.df = df
+        self.agg_student = {}  # scalar
+        self.agg_grade = {}  # scalar
+        self.agg_practice = {}  # scalar
         self.agg_grades = {}
         self.agg_practices = {}
-        #self.agg_grade_practice_ratio = {}
+        # self.agg_grade_practice_ratio = {}
         self.grade_all = 0.0
         self.practice_all = 0.0
         self.ratio_all = 0.0
 
-    def aggregate_all_by_kc(self):
-        #TODO: I think we need one more function!
-        # The aggregate KCs function collapses within kcs, but do we need something to collapse the whole dataset?
-        # We should add the practice, and average the KCS... I think
+    def aggregate_all_by_threshold(self, thresholds=None, type="uniform"):
+        practices = []
+        grades = []
+        students = []
+        if thresholds is None:
+            thresholds = SingleKCPolicy.get_thresholds(self.df)
+        print "#threshold=", len(thresholds)
+        for threshold in thresholds:
+            grade = 0.0
+            practice = 0.0
+            student = 0
+            kcs = self.df["kc"].unique()
+            for kc in kcs:
+                df_kc = self.df[self.df["kc"] == kc]
+                grade_a_kc, student_a_kc = SingleKCPolicy.grade(df_kc, threshold)
+                practice_a_kc = SingleKCPolicy.practice(df_kc, threshold)
+                grade += grade_a_kc
+                practice += practice_a_kc
+                student += student_a_kc
+            grade = grade / (1.0 * len(kcs))
+            if len(grades) > 0:
+                grades.append(max(grades[-1], grade))
+                practices.append(max(grades[-1], practice))
+            else:
+                grades.append(grade)
+                grades.append(practice)
+            students.append(student)
+        if type == "uniform":
+            self.grade_all = np.mean(grades)
+            self.practice_all = np.mean(practices)
+            self.ratio_all = self.grade_all / (1.0 * self.practice_all)
+        else:
+            print "To implement..."
+            exit(-1)
 
-        agg_grade = np.mean(self.agg_grade.values())
-        agg_practice = np.sum(self.agg_practice.values())
-        agg_student = np.sum(self.agg_student.values())
+    def aggregate_all_by_kc(self, type="uniform"):
+        self.policy = SingleKCPolicy(self.df)
+        self.policy.calculate()
+        self.aggregate_each_kc(type)
+        self.grade_all = np.mean(self.agg_grade.values())
+        self.practice_all = np.sum(self.agg_practice.values()) #/ (1.0 * sum(self.agg_student.values()))
+        self.ratio_all = self.grade_all / (1.0 * self.practice_all)
 
-        grade_all = np.mean(agg_grade)
-        practice_all = np.sum(agg_practice)
-        ratio_all =  grade_all / (1.0 * practice_all)
-        #ratio_all = np.mean(self.agg_grade_practice_ratio.values())
 
-
-        # TODO: check wether .values() return things in order
-        # weigthed_grade_all = (np.dot(self.agg_grade.values(), self.agg_student.values())) / np.sum(self.agg_student.values())
-        # TODO: don't know how to get the sum
-        # weighted_practice_all =  ((np.dot(self.agg_practice.values(), self.agg_student.values())) / np.sum(self.agg_student.values()))
-        # weighted_ratio_all = (np.dot(self.agg_grade_practice_ratio.values(), self.agg_student.values())) / np.sum(self.agg_student.values())
-
-        self.grade_all = grade_all
-        self.practice_all = practice_all
-        self.ratio_all = ratio_all
-
-        #print grade_all, practice_all, ratio_all
-
-    def aggregate_all_by_threshold(self):
-        pass
-#         def calculate(threshold):
-#    for kc in kcs:
-#         practice += expected_grade(kc, threshold)  -> is it expected_practice(kc, threshold)?
-#         grade  += 1/kcs + expected_practice(kc, threshold) -> why there is a 1/kcs? Is it expected_grade?
-#         student = ....
-#    return practice, grade
-#
-# def calculate_all():
-#       for threshold in thresholds:
-#              practice, grade, student  = calculate(threshold)
-#              practices.append(practice)
-#              grades.append(grade)
-#              studens.append(student)
-#
-#       return wuc(practices) / wuc(students) -
-
-    def aggregate_each_kc(self, type):
+    def aggregate_each_kc(self, type="uniform"):
         assert type in White.aggregation_types, "Unknown parameter"
 
-        agg_grade_practice_ratio1 = {}
-        agg_grade_practice_ratio2 = {}
         for kc in self.policy.grades.keys():
-            kc_grades     = self.policy.grades[kc]
-            kc_practices  = self.policy.practices[kc]
-            kc_students   = self.policy.students[kc]
+            kc_grades = self.policy.grades[kc]
+            kc_practices = self.policy.practices[kc]
+            kc_students = self.policy.students[kc]
 
-            self.agg_grades[kc] = (np.array(kc_grades) * np.array(kc_students) / sum(kc_students)).tolist() #
-            self.agg_practices[kc] = (np.array(kc_practices) * np.array(kc_students) / sum(kc_students)).tolist() #
-            # Following gives scalar
             self.agg_student[kc] = sum(kc_students)
-            self.agg_grade[kc] = np.dot(kc_grades, kc_students) / sum(kc_students)
-            self.agg_practice[kc] = np.dot(kc_practices, kc_students) / sum(kc_students)
-
-            #TODO: Check
-            #Not sure how we should calculate this ratio:
-            # agg_grade_practice_ratio1[kc] = np.sum(self.agg_grades[kc]) / np.sum(self.agg_practices[kc])
-            # ind_ratio = np.divide(self.agg_grades[kc], (self.agg_practices[kc]))
-            # ind_ratio[np.isnan(ind_ratio)] = 0
-            # ind_ratio[np.isinf(ind_ratio)] = 0
-            # agg_grade_practice_ratio2[kc] = np.mean(ind_ratio)#np.sum(np.divide(self.agg_grades[kc], (self.agg_practices[kc])))
-            #assert(agg_grade_practice_ratio1[kc] == agg_grade_practice_ratio2[kc]), "Are this the same??"
-            # This is how you had it before, which I think it's very very complicated, and it looks like it wasn't working
-            #kc_grade_practice = np.divide(np.array(kc_grades, dtype=float), np.array(kc_practices + np.finfo(np.float32).eps, dtype=float))
-            #self.agg_grade_practice_ratio[kc] = agg_grade_practice_ratio1[kc]
-        #print "agg_grade_practice_ratio2:", pretty(agg_grade_practice_ratio2), "\n"
-
+            if type == "weighted":
+                self.agg_grades[kc] = (np.array(kc_grades) * np.array(kc_students) / sum(kc_students)).tolist()  #
+                self.agg_practices[kc] = (np.array(kc_practices) * np.array(kc_students) / sum(kc_students)).tolist()  #
+                self.agg_grade[kc] = np.dot(kc_grades, kc_students) / sum(kc_students)
+                self.agg_practice[kc] = np.dot(kc_practices, kc_students) / sum(kc_students)
+            elif type == "uniform":
+                self.agg_grades[kc] = kc_grades
+                self.agg_practices[kc] = kc_practices
+                self.agg_grade[kc] = np.mean(kc_grades)
+                self.agg_practice[kc] = np.mean(kc_practices)
 
     def __repr__(self):
         #'\nagg_grade_practice_ratio=\t' + pretty(self.agg_grade_practice_ratio) + \
-        return 'thresholds=\t' + pretty(self.policy.thresholds) + \
-               '\ngrades=\t' + pretty(self.policy.grades) + \
-               '\npractices=\t' + pretty(self.policy.practices) + \
-               '\nstudents=\t' + pretty(self.policy.students) + \
-               '\nagg_grades=\t' + pretty(self.agg_grades) + \
-               '\nagg_practices=\t' + pretty(self.agg_practices) + \
-               '\nagg_grade=\t' + pretty(self.agg_grade) + \
-               '\nagg_practice=\t' + pretty(self.agg_practice) + \
-               '\nagg_student=\t' + pretty(self.agg_student) + \
+        return ('thresholds=\t' + pretty(self.policy.thresholds) if self.policy is not None else "") + \
+               ('\ngrades=\t' + pretty(self.policy.grades) if self.policy is not None else "")+ \
+               ('\npractices=\t' + pretty(self.policy.practices) if self.policy is not None else "") + \
+               ('\nstudents=\t' + pretty(self.policy.students) if self.policy is not None else "")+ \
+               ('\nagg_grades=\t' + pretty(self.agg_grades) if self.policy is not None else "") + \
+               ('\nagg_practices=\t' + pretty(self.agg_practices) if self.policy is not None else "") + \
+               ('\nagg_grade=\t' + pretty(self.agg_grade) if self.policy is not None else "") + \
+               ('\nagg_practice=\t' + pretty(self.agg_practice) if self.policy is not None else "") + \
+               ('\nagg_student=\t' + pretty(self.agg_student) if self.policy is not None else "") + \
                '\ngrade_all=\t' + pretty(self.grade_all) + \
                '\npractice_all=\t' + pretty(self.practice_all) + \
                '\nratio_all=\t' + pretty(self.ratio_all)
 
 
-
 class WhiteVisualization():
-
     def __init__(self, white_obj):
         self.white_obj = white_obj
 
@@ -202,12 +187,12 @@ class WhiteVisualization():
             x = self.white_obj.policy.thresholds[kc]
             y = self.white_obj.policy.grades[kc]
             pl.scatter(x, y, color='green')
-            pl.plot(x, y,color='green', linewidth=3)
-            #pl.xticks(x, x, fontsize=5, rotation=45)  # 5
+            pl.plot(x, y, color='green', linewidth=3)
+            # pl.xticks(x, x, fontsize=5, rotation=45)  # 5
             pl.yticks(color='green')  # 5
             pl.ylim([0, 1])
             pl.xlabel("threshold", fontsize=12)
-            pl.ylabel("expected grade", color='green', fontsize=12)
+            pl.ylabel("grade", color='green', fontsize=12)
 
             #JPG: shouldn' be a twin graph... they are on different scales
             ax2 = ax.twinx()
@@ -217,7 +202,7 @@ class WhiteVisualization():
             pl.plot(x, y, color='red', linewidth=3)
             pl.yticks(color='red')  # 5
             pl.ylim([0, max(y)])
-            ax2.set_ylabel("expected practice", color="red", fontsize=12)
+            ax2.set_ylabel("practice", color="red", fontsize=12)
 
             pl.xlim([0, 1])
             pl.savefig(figure_name.format(kc))
@@ -233,13 +218,14 @@ class WhiteVisualization():
             pl.scatter(x, y)
             pl.plot(x, y, linewidth=3)
             pl.ylim([0, 1])
-            pl.xlabel("expected practice", fontsize=12)
-            pl.ylabel("expected grade", fontsize=12)
+            pl.xlabel("practice", fontsize=12)
+            pl.ylabel("grade", fontsize=12)
             pl.savefig("images/" + kctype + "_" + figure_name.format(kc))
             pl.close(fig)
 
 
     '''white_objs is a list of white objects... it may only have a single object'''
+
     def graph_path(self, white_objs, threshold=None):
         ''' this should save the image to file '''
         if threshold == None:
@@ -257,37 +243,36 @@ def pretty(x):
         for (k, v) in x.items():
             ans.append("{}:{}".format(k, pretty(v)))
         return "{" + ",".join(ans) + "}"
-    elif isinstance(x,list):
-        return "[" + ", ".join([pretty(e) for e in x] ) + "]"
+    elif isinstance(x, list):
+        return "[" + ", ".join([pretty(e) for e in x]) + "]"
     elif isinstance(x, float):
         return "%4.3f" % x
     else:
         return str(x)
 
 
-#def main(filenames="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#tom_predictions_chapter1
+# def main(filenames="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#tom_predictions_chapter1
 def main(filenames="example_data/tom_predictions_chapter1.tsv", sep="\t"):
-
     whites = []
     for input in filenames.split(","):
-
         print input
-
         df = pd.read_csv(input, sep=sep)
         w = White(df)
-        w.aggregate_each_kc("weighted")
-        w.aggregate_all_by_kc()
+        #w.aggregate_all_by_kc("uniform")
+        w.aggregate_all_by_threshold(type="uniform")
         print w
         whites.append(w)
-        v = WhiteVisualization(w)
 
-        output = os.path.splitext(input)[0] + "_{}.png"
-        v.graph_wuc(output)
-        v.graph_grade_vs_practice()
+        # v = WhiteVisualization(w)
+        # output = os.path.splitext(input)[0] + "_{}.png"
+        # v.graph_wuc(output)
+        # v.graph_grade_vs_practice()
 
     print "done"
+
     # If you need to do multi-dataset comparison do them here:
     #foo(whites)
+
 
 if __name__ == "__main__":
     import sys
