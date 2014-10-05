@@ -80,7 +80,6 @@ class SingleKCPolicy:
 
 class White:
     aggregation_types = ["weighted", "uniform"]
-    aggregation_types_for_all = ["by_kc", "by_threshold"]
 
     def __init__(self, df):
         self.policy = None
@@ -312,7 +311,7 @@ def pretty(x):
 
 
 # def main(filenames="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#tom_predictions_chapter1.tsv #tdx_1.3.2.61_16.csv
-def main(filenames="example_data/tom_predictions_chapter1.tsv", sep="\t"):
+def main(filenames="example_data/tdx_predictions_chapter1.tsv", sep="\t"):
     whites = []
     for input in filenames.split(","):
         print input
@@ -325,7 +324,7 @@ def main(filenames="example_data/tom_predictions_chapter1.tsv", sep="\t"):
         whites.append(w)
 
         v = WhiteVisualization(w)
-        v.plot_by_threshold("all", "images/tom_")
+        v.plot_by_threshold("all", "images/tdx_")
         # output = os.path.splitext(input)[0] + "_{}.png"
         # v.graph_wuc(output)
 
