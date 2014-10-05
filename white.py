@@ -1,8 +1,10 @@
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as pl, pyplot, cm, colors
+import sklearn.metrics as metrics
 import os
 
+verbose = False
 
 class SingleKCPolicy:
     def __init__(self, df):
@@ -53,7 +55,6 @@ class SingleKCPolicy:
 
     def calculate(self):
         kcs = self.df["kc"].unique()
-        #kcs = ["1.3.2.61_16"]
         for kc in kcs:
             df_kc = self.df[self.df["kc"] == kc]
             kc_thresholds = SingleKCPolicy.get_thresholds(df_kc)  # [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]#
@@ -83,24 +84,31 @@ class White:
     def __init__(self, df):
         self.policy = None
         self.df = df
-        self.agg_student = {}  # scalar
         self.agg_grade = {}  # scalar
         self.agg_practice = {}  # scalar
+        self.agg_student = {}  # scalar
         self.agg_grades = {}
         self.agg_practices = {}
+        self.agg_students = {}
         # self.agg_grade_practice_ratio = {}
         self.grade_all = 0.0
         self.practice_all = 0.0
         self.ratio_all = 0.0
+        self.auc_all = 0.0
 
     def aggregate_all_by_threshold(self, thresholds=None, type="uniform"):
+        print "Aggregating all KCs by threshold using ", type, " ..."
         practices = []
         grades = []
         students = []
         if thresholds is None:
             thresholds = SingleKCPolicy.get_thresholds(self.df)
         print "#threshold=", len(thresholds)
+        if verbose:
+            print thresholds
         for threshold in thresholds:
+            if verbose:
+                print "threhsold=", threshold
             grade = 0.0
             practice = 0.0
             student = 0
@@ -109,18 +117,22 @@ class White:
                 df_kc = self.df[self.df["kc"] == kc]
                 grade_a_kc, student_a_kc = SingleKCPolicy.grade(df_kc, threshold)
                 practice_a_kc = SingleKCPolicy.practice(df_kc, threshold)
+                if verbose:
+                    print kc, grade_a_kc, practice_a_kc, student_a_kc
                 grade += grade_a_kc
                 practice += practice_a_kc
                 student += student_a_kc
             grade = grade / (1.0 * len(kcs))
             if len(grades) > 0:
                 grades.append(max(grades[-1], grade))
-                practices.append(max(grades[-1], practice))
+                practices.append(max(practices[-1], practice))
             else:
                 grades.append(grade)
-                grades.append(practice)
+                practices.append(practice)
             students.append(student)
         if type == "uniform":
+            if verbose:
+                print grades, "\n", practices, "\n", students
             self.grade_all = np.mean(grades)
             self.practice_all = np.mean(practices)
             self.ratio_all = self.grade_all / (1.0 * self.practice_all)
@@ -129,6 +141,7 @@ class White:
             exit(-1)
 
     def aggregate_all_by_kc(self, type="uniform"):
+        print "Aggregating all KCs by KC using ", type, " ..."
         self.policy = SingleKCPolicy(self.df)
         self.policy.calculate()
         self.aggregate_each_kc(type)
@@ -157,6 +170,13 @@ class White:
                 self.agg_grade[kc] = np.mean(kc_grades)
                 self.agg_practice[kc] = np.mean(kc_practices)
 
+    def overall_auc(self):
+        auc = float('nan')
+        if self.df['outcome'].nunique() > 1:
+            fprs, tprs, thresholds = metrics.roc_curve(self.df['outcome'], self.df['pcorrect'])
+            roc_auc = metrics.auc(fprs, tprs)
+        self.auc_all = auc
+
     def __repr__(self):
         #'\nagg_grade_practice_ratio=\t' + pretty(self.agg_grade_practice_ratio) + \
         return ('thresholds=\t' + pretty(self.policy.thresholds) if self.policy is not None else "") + \
@@ -170,7 +190,8 @@ class White:
                ('\nagg_student=\t' + pretty(self.agg_student) if self.policy is not None else "") + \
                '\ngrade_all=\t' + pretty(self.grade_all) + \
                '\npractice_all=\t' + pretty(self.practice_all) + \
-               '\nratio_all=\t' + pretty(self.ratio_all)
+               '\nratio_all=\t' + pretty(self.ratio_all) + \
+               '\noverall_auc=\t' + pretty(self.auc_all)
 
 
 class WhiteVisualization():
@@ -251,8 +272,8 @@ def pretty(x):
         return str(x)
 
 
-# def main(filenames="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#tom_predictions_chapter1
-def main(filenames="example_data/tom_predictions_chapter1.tsv", sep="\t"):
+# def main(filenames="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#tom_predictions_chapter1.tsv #tdx_1.3.2.61_16.csv
+def main(filenames="example_data/tdx_predictions_chapter1.tsv", sep="\t"):
     whites = []
     for input in filenames.split(","):
         print input
