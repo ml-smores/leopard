@@ -55,6 +55,7 @@ class SingleKCPolicy:
 
     def calculate(self):
         kcs = self.df["kc"].unique()
+        print "#kcs=", len(kcs)
         for kc in kcs:
             df_kc = self.df[self.df["kc"] == kc]
             kc_thresholds = SingleKCPolicy.get_thresholds(df_kc)  # [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]#
@@ -203,28 +204,56 @@ class White:
 
 
 class WhiteVisualization():
+
     def __init__(self, white_obj):
         self.white_obj = white_obj
 
-    # TODO: Fix bug that interpolates thresholds
-    def plot_by_threshold(self, type):
-        if type == "by_kc": #plot each KC
+    def plot_by_threshold(self, type, figure_path="images/"):
+        if type == "single" and self.white_obj.policy is not None: #plot each KC
             for kc in self.white_obj.policy.grades.keys():
                 thresholds = self.white_obj.policy.thresholds[kc]
                 grades = self.white_obj.policy.grades[kc]
                 practices = self.white_obj.policy.practices[kc]
-                self.plot_component_relation(kc, thresholds, grades, "images/", "threshold", "grade", [0,1], [0, 1])
-                self.plot_component_relation(kc, thresholds, practices, "images/", "threshold", "practice", [0, 1], [0, max(practices)])
-                self.plot_component_relation(kc, practices, grades, "images/", "practice", "grade", [0, max(practices)], [0,1])
-                self.plot_component_relation(kc, thresholds, grades, "images/", "threshold", "grade", [0,1], [0,1], y2=practices, y2label="practice", y2lim=[0, max(practices)])
-        else: #plot for all KCs
+                self.plot_component_relation(kc, thresholds, grades, figure_path, "threshold", "grade", [0, 1], [0, 1])
+                self.plot_component_relation(kc, thresholds, practices, figure_path, "threshold", "practice", [0, 1], [0, max(practices)])
+                self.plot_component_relation(kc, practices, grades, figure_path, "practice", "grade", [0, max(practices)], [0,1])
+        elif type == "multiple" and self.white_obj.policy is not None: #plot multiple kcs in one figure
+            fig1 = pl.figure(1)
+            fig2 = pl.figure(2)
+            fig3 = pl.figure(3)
+            labels = []
+            for kc in self.white_obj.policy.grades.keys():
+                thresholds = self.white_obj.policy.thresholds[kc]
+                grades = self.white_obj.policy.grades[kc]
+                practices = self.white_obj.policy.practices[kc]
+                color = "green" if "easy" in kc else ("yellow" if "medium" in kc else "red")
+                legend = ""
+                label = "easy" if "easy" in kc else ("medium" if "medium" in kc else "hard")
+                if label not in labels:
+                    legend = label
+                    labels.append(legend)
+                pl.figure(1)
+                fig1 = self.plot_component_relation(kc, thresholds, grades, figure_path, "threshold", "grade", [0, 1], [0, 1], linewidth=1, ycolor=color, label=legend, dotsize=10, figure=fig1)
+                pl.figure(2)
+                fig2 = self.plot_component_relation(kc, thresholds, practices, figure_path, "threshold", "practices", [0, 1], [0, max(practices)], linewidth=1, ycolor=color, label=legend, dotsize=10, figure=fig2)
+                pl.figure(3)
+                fig3 = self.plot_component_relation(kc, practices, grades, figure_path, "practice", "grade", [0, max(practices)], [0,1], linewidth=1, ycolor=color, label=legend, dotsize=10, figure=fig3)
+            pl.figure(1)
+            pl.savefig(figure_path + "grade_threshold_multiple.png")
+            pl.figure(2)
+            pl.savefig(figure_path + "practice_threshold_multiple.png")
+            pl.figure(3)
+            pl.savefig(figure_path + "grade_practice_multiple.png")
+        elif type == "all" and self.white_obj.thresholds is not None: #plot for all KCs
             thresholds = self.white_obj.thresholds
             grades = self.white_obj.grades
             practices = self.white_obj.practices
-            self.plot_component_relation("all", thresholds, grades, "images/", "threshold", "grade", [0,1], [0, 1])
-            self.plot_component_relation("all", thresholds, practices, "images/", "threshold", "practice", [0, 1], [0, max(practices)])
-            self.plot_component_relation("all", practices, grades, "images/", "practice", "grade", [0, max(practices)], [0,1])
-            self.plot_component_relation("all", thresholds, grades, "images/", "threshold", "grade", [0,1], [0,1], y2=practices, y2label="practice", y2lim=[0, max(practices)])
+            self.plot_component_relation("all", thresholds, grades, figure_path, "threshold", "grade", [0,1], [0, 1])
+            self.plot_component_relation("all", thresholds, practices, figure_path, "threshold", "practice", [0, 1], [0, max(practices)])
+            self.plot_component_relation("all", practices, grades, figure_path, "practice", "grade", [0, max(practices)], [0,1])
+        else:
+            print "ERROR: Please reconfigure!"
+            exit(-1)
 
     # def graph_path(self, white_objs, threshold=None):
     def plot_by_practice(self, white_objs, threshold=None):
@@ -241,34 +270,31 @@ class WhiteVisualization():
             pass
 
 
-    def plot_component_relation(self, kc, x, y, figure_path, xlabel, ylabel, xlim=None, ylim=None, y2=None, y2label=None, y2lim=None):
-        '''grade vs. threshold'''
-        fig, ax = pl.subplots()
-        fig.subplots_adjust(bottom=0.12)
-        ycolor = "black" if y2 is None else "green"
-        pl.scatter(x, y, color=ycolor)
-        pl.plot(x, y, color=ycolor,linewidth=3)
-        pl.yticks(color=ycolor)  # 5
+    def plot_component_relation(self, kc, x, y, figure_path, xlabel, ylabel,
+                                xlim=None, ylim=None, linewidth=3, ycolor="black", label=None, dotsize=20,
+                                figure=None, axis=None):
+        if figure is None:
+            fig, ax = pl.subplots()
+        else:
+            fig = figure
 
+        pl.scatter(x, y, color=ycolor, s=dotsize)
+        if label is None:
+            pl.step(x, y, color=ycolor, linewidth=linewidth)
+        else:
+            pl.step(x, y, color=ycolor, linewidth=linewidth, label=label)
+            pl.legend(loc="lower right", prop={'size':9}) #ncol=4,
+
+        pl.ylabel(ylabel, fontsize=12)#ycolor
+        pl.xlabel(xlabel, fontsize=12)
         if ylim is not None:
             pl.ylim(ylim)
-        pl.xlabel(xlabel, fontsize=12)
-        pl.ylabel(ylabel, color=ycolor, fontsize=12)
-
-        if y2 is not None:
-            #JPG: shouldn' be a twin graph... they are on different scales
-            ax2 = ax.twinx()
-            ax2.yaxis.tick_right()
-            pl.scatter(x, y2, color='red')
-            pl.plot(x, y2, color='red', linewidth=3)
-            pl.yticks(color='red')  # 5
-            pl.ylim([0, max(y2)])
-            ax2.set_ylabel(y2label, color="red", fontsize=12)
-
         if xlim is not None:
             pl.xlim(xlim)
-        pl.savefig(figure_path + (ylabel + "_" + (y2label + "_" if y2 is not None else "") + xlabel + "_{}.png").format(kc))
-        pl.close(fig)
+        if figure is None:
+            pl.savefig(figure_path + (ylabel + "_" + xlabel + "_{}.png").format(kc))
+            pl.close(fig)
+        return fig
 
 
 def pretty(x):
@@ -292,14 +318,14 @@ def main(filenames="example_data/tom_predictions_chapter1.tsv", sep="\t"):
         print input
         df = pd.read_csv(input, sep=sep)
         w = White(df)
-        #w.aggregate_all_by_kc("uniform")
+        #w.aggregate_all_by_kc(type="uniform")
         w.aggregate_all_by_threshold(type="uniform")
         w.auc()
         print w
         whites.append(w)
 
         v = WhiteVisualization(w)
-        v.plot_by_threshold("all")
+        v.plot_by_threshold("all", "images/tom_")
         # output = os.path.splitext(input)[0] + "_{}.png"
         # v.graph_wuc(output)
 
