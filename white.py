@@ -84,13 +84,9 @@ class White:
     def __init__(self, df):
         self.policy = None
         self.df = df
-        #self.agg_grades = {}
-        #self.agg_practices = {}
-        #self.agg_students = {}
         self.agg_grade = {}  # scalar
         self.agg_practice = {}  # scalar
         self.agg_student = {}  # scalar
-        # self.agg_grade_practice_ratio = {}
         self.grades = None
         self.practices = None
         self.students = None
@@ -136,13 +132,13 @@ class White:
                 self.grades.append(grade)
                 self.practices.append(practice)
             self.students.append(student)
-        if type == "uniform":
-            self.grade_all = np.mean(self.grades)
-            self.practice_all = np.mean(self.practices)
-            self.ratio_all = self.grade_all / (1.0 * self.practice_all)
-        else:
-            print "To implement..."
-            exit(-1)
+        if type == "weighted":
+            self.grades = (np.array(self.grades) * np.array(self.students) / sum(self.students)).tolist()
+            self.practices = (np.array(self.practices) * np.array(self.students) / sum(self.students)).tolist()
+        self.grade_all = self.integration(thresholds, self.grades)  #self.grade_all = np.mean(self.grades)
+        self.practice_all = self.integration(thresholds, self.practices) #self.practice_all = np.mean(self.practices)
+        self.ratio_all =  (1.0 * self.practice_all) / self.grade_all
+
 
     def aggregate_all_by_kc(self, type="uniform"):
         print "Aggregating all KCs by KC using ", type, " ..."
@@ -151,28 +147,38 @@ class White:
         self.aggregate_each_kc(type)
         self.grade_all = np.mean(self.agg_grade.values())
         self.practice_all = np.sum(self.agg_practice.values()) #/ (1.0 * sum(self.agg_student.values()))
-        self.ratio_all = self.grade_all / (1.0 * self.practice_all)
+        self.ratio_all = (1.0 * self.practice_all) / self.grade_all
 
 
     def aggregate_each_kc(self, type="uniform"):
         assert type in White.aggregation_types, "Unknown parameter"
-
         for kc in self.policy.grades.keys():
             kc_grades = self.policy.grades[kc]
             kc_practices = self.policy.practices[kc]
             kc_students = self.policy.students[kc]
-
-            self.agg_student[kc] = sum(kc_students)
+            kc_thresholds = self.policy.thresholds[kc]
+            print pretty(kc_thresholds)
             if type == "weighted":
-                #self.agg_grades[kc] = (np.array(kc_grades) * np.array(kc_students) / sum(kc_students)).tolist()  #
-                #self.agg_practices[kc] = (np.array(kc_practices) * np.array(kc_students) / sum(kc_students)).tolist()  #
-                self.agg_grade[kc] = np.dot(kc_grades, kc_students) / sum(kc_students)
-                self.agg_practice[kc] = np.dot(kc_practices, kc_students) / sum(kc_students)
-            elif type == "uniform":
-                #self.agg_grades[kc] = kc_grades
-                #self.agg_practices[kc] = kc_practices
-                self.agg_grade[kc] = np.mean(kc_grades)
-                self.agg_practice[kc] = np.mean(kc_practices)
+                print pretty(kc_grades)
+                print kc_students, sum(kc_students)
+                kc_grades = (np.array(kc_grades) * np.array(kc_students) / sum(kc_students)).tolist()
+                print pretty(kc_grades), sum(kc_grades)
+                kc_practices = (np.array(kc_practices) * np.array(kc_students) / sum(kc_students)).tolist()
+            self.agg_grade[kc] = self.integration(kc_thresholds, kc_grades)
+            print pretty(self.agg_grade[kc])
+            self.agg_practice[kc] = self.integration(kc_thresholds, kc_practices)
+            self.agg_student[kc] = sum(kc_students)
+
+
+    def integration(self, thresholds, values):
+        thresholds_ = thresholds[:-1]
+        thresholds_.insert(0, 0.0)
+        thresholds_diff = np.subtract(thresholds, thresholds_).tolist()
+        width = thresholds_diff[1:]
+        print "values:", pretty(values[1:]), "\nwidth:", pretty(width)
+        integrated_value = np.dot(values[1:], width)
+        return integrated_value
+
 
     def auc(self):
         auc = float('nan')
@@ -181,11 +187,14 @@ class White:
             auc = metrics.auc(fprs, tprs)
         self.auc_all = auc
 
-    def __repr__(self):
+
+    #def __repr__(self):
+    def log(self, file_name, type, overall_type):
+        str = "\n" + "\t".join([file_name, type, overall_type]) + "\n"
         #'\nagg_grade_practice_ratio=\t' + pretty(self.agg_grade_practice_ratio) + \
         #('\nagg_grades=\t' + pretty(self.agg_grades) if self.policy is not None else "") + \
         #('\nagg_practices=\t' + pretty(self.agg_practices) if self.policy is not None else "") + \
-        return ('thresholds=\t' + pretty(self.policy.thresholds) if self.policy is not None else "") + \
+        str += ('thresholds=\t' + pretty(self.policy.thresholds) if self.policy is not None else "") + \
                ('\ngrades=\t' + pretty(self.policy.grades) if self.policy is not None else "")+ \
                ('\npractices=\t' + pretty(self.policy.practices) if self.policy is not None else "") + \
                ('\nstudents=\t' + pretty(self.policy.students) if self.policy is not None else "")+ \
@@ -199,7 +208,10 @@ class White:
                '\ngrade_all=\t' + pretty(self.grade_all) + \
                '\npractice_all=\t' + pretty(self.practice_all) + \
                '\nratio_all=\t' + pretty(self.ratio_all) + \
-               '\noverall_auc=\t' + pretty(self.auc_all)
+               '\noverall_auc=\t' + pretty(self.auc_all) + "\n"
+        print str
+        file = open("log/white.log", "a")
+        file.write(str)
 
 
 class WhiteVisualization():
@@ -311,24 +323,30 @@ def pretty(x):
 
 
 # def main(filenames="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#tom_predictions_chapter1.tsv #tdx_1.3.2.61_16.csv
-def main(filenames="example_data/tdx_predictions_chapter1.tsv", sep="\t"):
+def main(filenames="example_data/example1.csv", type="uniform", overall_type="bykc", plot=True):
     whites = []
     for input in filenames.split(","):
         print input
-        df = pd.read_csv(input, sep=sep)
+        df = pd.read_csv(input, sep=("\t" if "tsv" in input else ","))
         w = White(df)
-        #w.aggregate_all_by_kc(type="uniform")
-        w.aggregate_all_by_threshold(type="uniform")
+        if overall_type == "bykc":
+            w.aggregate_all_by_kc(type=type)
+        else:
+            w.aggregate_all_by_threshold(type=type)
         w.auc()
-        print w
+        w.log(input, type, overall_type)
         whites.append(w)
 
-        v = WhiteVisualization(w)
-        v.plot_by_threshold("all", "images/tdx_")
-        # output = os.path.splitext(input)[0] + "_{}.png"
-        # v.graph_wuc(output)
+        if plot:
+            v = WhiteVisualization(w)
+            if overall_type == "bykc":
+                v.plot_by_threshold("single", "images/tdx_")
+            else:
+                v.plot_by_threshold("all", "images/tdx_")
+            # output = os.path.splitext(input)[0] + "_{}.png"
+            # v.graph_wuc(output)
 
-    print "done"
+    print "Done"
 
     # If you need to do multi-dataset comparison do them here:
     #foo(whites)
