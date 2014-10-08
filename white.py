@@ -4,7 +4,7 @@ from matplotlib import pyplot as pl, pyplot, cm, colors
 import sklearn.metrics as metrics
 import os
 
-verbose = False
+verbose = True
 
 class SingleKCPolicy:
     def __init__(self, df):
@@ -335,7 +335,7 @@ def pretty(x):
 
 
 # def main(filenames="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#tom_predictions_chapter1.tsv #tdx_1.3.2.61_16.csv
-def main(filenames="example_data/tom_predictions_chapter1.tsv", type="uniform", overall_type="by_threshold", plot=False):
+def main(filenames="example_data/tdx_1.3.2.61_16.csv", type="uniform", overall_type="by_threshold", plot=False):
     whites = []
     for input in filenames.split(","):
         print input
