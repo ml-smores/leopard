@@ -13,6 +13,7 @@ class SingleKCPolicy:
         self.grades = {}
         self.practices = {}
         self.students = {}
+        self.kcs = None
         # JPG: Do we need to sort??
         self.df = df #self.df = df.sort(columns=["kc", "student", "timestep"])
 
@@ -54,9 +55,8 @@ class SingleKCPolicy:
         return thresholds
 
     def calculate(self):
-        kcs = self.df["kc"].unique()
-        print "#kcs=", len(kcs)
-        for kc in kcs:
+        self.kcs = self.df["kc"].unique()
+        for kc in self.kcs:
             df_kc = self.df[self.df["kc"] == kc]
             kc_thresholds = SingleKCPolicy.get_thresholds(df_kc)  # [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]#
             self.thresholds[kc] = kc_thresholds
@@ -77,6 +77,12 @@ class SingleKCPolicy:
             self.practices[kc] = kc_practices
             self.students[kc] = kc_students
 
+    def __str__(self):
+        #'SingleKCPolicy:\n#kcs=\t' + pretty(len(self.kcs)) + \
+        return  'thresholds=\t' + pretty(self.thresholds) + \
+                '\ngrades=\t' + pretty(self.grades) + \
+                '\npractices=\t' + pretty(self.practices) + \
+                '\nstudents=\t' + pretty(self.students) + "\n"
 
 class White:
     aggregation_types = ["weighted", "uniform"]
@@ -91,63 +97,66 @@ class White:
         self.practices = None
         self.students = None
         self.thresholds = None
+        self.kcs = None
         self.grade_all = 0.0
         self.practice_all = 0.0
         self.ratio_all = 0.0
         self.auc_all = 0.0
 
-    def aggregate_all_by_threshold(self, thresholds=None, type="uniform"):
-        print "Aggregating all KCs by threshold using ", type, " ..."
-        ''' Allows to get for just one threshold, or a specified set of thresholds'''
-        if thresholds is None:
-            thresholds = SingleKCPolicy.get_thresholds(self.df)
-        print "#threshold=", len(thresholds)
-        if verbose:
-            print thresholds
-        self.thresholds = thresholds
-        self.grades = []
-        self.practices = []
-        self.students = []
-        for threshold in thresholds:
-            if verbose:
-                print "threhsold=", threshold
-            grade = 0.0
-            practice = 0.0
-            student = 0
-            kcs = self.df["kc"].unique()
-            for kc in kcs:
-                df_kc = self.df[self.df["kc"] == kc]
-                grade_a_kc, student_a_kc = SingleKCPolicy.grade(df_kc, threshold)
-                practice_a_kc = SingleKCPolicy.practice(df_kc, threshold)
-                if verbose:
-                    print kc, grade_a_kc, practice_a_kc, student_a_kc
-                grade += grade_a_kc
-                practice += practice_a_kc
-                student += student_a_kc
-            grade = grade / (1.0 * len(kcs))
-            if len(self.grades) > 0:
-                self.grades.append(max(self.grades[-1], grade))
-                self.practices.append(max(self.practices[-1], practice))
-            else:
-                self.grades.append(grade)
-                self.practices.append(practice)
-            self.students.append(student)
-        if type == "weighted":
-            self.grades = (np.array(self.grades) * np.array(self.students) / sum(self.students)).tolist()
-            self.practices = (np.array(self.practices) * np.array(self.students) / sum(self.students)).tolist()
-        self.grade_all = self.integration(thresholds, self.grades)  #self.grade_all = np.mean(self.grades)
-        self.practice_all = self.integration(thresholds, self.practices) #self.practice_all = np.mean(self.practices)
-        self.ratio_all =  (1.0 * self.practice_all) / self.grade_all
 
-
-    def aggregate_all_by_kc(self, type="uniform"):
-        print "Aggregating all KCs by KC using ", type, " ..."
+    def aggregate_all_kcs(self, thresholds=None, type="uniform", overall_type="by_kc"):
+        print "Aggregating all ", overall_type, " using ", type, " ..."
         self.policy = SingleKCPolicy(self.df)
         self.policy.calculate()
-        self.aggregate_each_kc(type)
-        self.grade_all = np.mean(self.agg_grade.values())
-        self.practice_all = np.sum(self.agg_practice.values()) #/ (1.0 * sum(self.agg_student.values()))
-        self.ratio_all = (1.0 * self.practice_all) / self.grade_all
+        self.kcs = self.df["kc"].unique()
+        if verbose:
+            print self.policy
+        if overall_type == "by_kc":
+            self.aggregate_each_kc(type)
+            self.grade_all = np.mean(self.agg_grade.values())
+            self.practice_all = np.sum(self.agg_practice.values()) #/ (1.0 * sum(self.agg_student.values()))
+            self.ratio_all = (1.0 * self.practice_all) / self.grade_all
+        else:
+            ''' Allows to get for just one threshold, or a specified set of thresholds'''
+            if thresholds is None:
+                thresholds = SingleKCPolicy.get_thresholds(self.df)
+            self.thresholds = thresholds
+            self.grades = []
+            self.practices = []
+            self.students = []
+            if verbose:
+                print pretty(thresholds)
+            for threshold in thresholds:
+                if verbose:
+                    print "threhsold=", threshold
+                grade = 0.0
+                practice = 0.0
+                student = 0
+                for kc in self.kcs:
+                    threshold_pos = next(i for i, v in enumerate(self.policy.thresholds[kc]) if v >= threshold)
+                    grade_a_kc = self.policy.grades[kc][threshold_pos]
+                    practice_a_kc = self.policy.practices[kc][threshold_pos]
+                    student_a_kc = self.policy.students[kc][threshold_pos]
+                    if verbose:
+                        print threshold_pos, kc, grade_a_kc, practice_a_kc, student_a_kc
+                    grade += grade_a_kc
+                    practice += practice_a_kc
+                    student += student_a_kc
+                grade = grade / (1.0 * len(self.kcs))
+                if len(self.grades) > 0:
+                    self.grades.append(max(self.grades[-1], grade))
+                    self.practices.append(max(self.practices[-1], practice))
+                else:
+                    self.grades.append(grade)
+                    self.practices.append(practice)
+                self.students.append(student)
+            if type == "weighted":
+                # TODO: change to count #students
+                self.grades = (np.array(self.grades) * np.array(self.students) / self.students[0]).tolist()
+                self.practices = (np.array(self.practices) * np.array(self.students) / self.students[0]).tolist()
+            self.grade_all = self.integration(thresholds, self.grades)  #self.grade_all = np.mean(self.grades)
+            self.practice_all = self.integration(thresholds, self.practices) #self.practice_all = np.mean(self.practices)
+            self.ratio_all =  (1.0 * self.practice_all) / self.grade_all
 
 
     def aggregate_each_kc(self, type="uniform"):
@@ -157,17 +166,20 @@ class White:
             kc_practices = self.policy.practices[kc]
             kc_students = self.policy.students[kc]
             kc_thresholds = self.policy.thresholds[kc]
-            print pretty(kc_thresholds)
+            print "thresholds:\t", pretty(kc_thresholds)
             if type == "weighted":
-                print pretty(kc_grades)
-                print kc_students, sum(kc_students)
-                kc_grades = (np.array(kc_grades) * np.array(kc_students) / sum(kc_students)).tolist()
-                print pretty(kc_grades), sum(kc_grades)
-                kc_practices = (np.array(kc_practices) * np.array(kc_students) / sum(kc_students)).tolist()
+                print "grades:\t", pretty(kc_grades), "sum:", pretty(sum(kc_grades)), "average:", pretty(np.mean(kc_grades))
+                print "practices:\t", pretty(kc_practices), "sum:", pretty(sum(kc_practices)), "average:", pretty(np.mean(kc_practices))
+                print "students:\t", kc_students
+                kc_grades = (np.array(kc_grades) * np.array(kc_students) / kc_students[0]).tolist()
+                kc_practices = (np.array(kc_practices) * np.array(kc_students) / kc_students[0]).tolist()
+                print "weighted grades:\t", pretty(kc_grades), "sum:", pretty(sum(kc_grades)), "average:", pretty(np.mean(kc_grades))
+                print "weighted practices:\t", pretty(kc_practices), "sum:", pretty(sum(kc_practices)), "average:", pretty(np.mean(kc_practices))
             self.agg_grade[kc] = self.integration(kc_thresholds, kc_grades)
-            print pretty(self.agg_grade[kc])
+            print "integrated grades: ",pretty(self.agg_grade[kc])
             self.agg_practice[kc] = self.integration(kc_thresholds, kc_practices)
-            self.agg_student[kc] = sum(kc_students)
+            print "integrated practices: ",pretty(self.agg_practice[kc])
+            self.agg_student[kc] = kc_students[0]
 
 
     def integration(self, thresholds, values):
@@ -175,7 +187,8 @@ class White:
         thresholds_.insert(0, 0.0)
         thresholds_diff = np.subtract(thresholds, thresholds_).tolist()
         width = thresholds_diff[1:]
-        print "values:", pretty(values[1:]), "\nwidth:", pretty(width)
+        if verbose:
+            print "integral values:", pretty(values[1:]), "\nintegral width:", pretty(width)
         integrated_value = np.dot(values[1:], width)
         return integrated_value
 
@@ -190,28 +203,27 @@ class White:
 
     #def __repr__(self):
     def log(self, file_name, type, overall_type):
-        str = "\n" + "\t".join([file_name, type, overall_type]) + "\n"
-        #'\nagg_grade_practice_ratio=\t' + pretty(self.agg_grade_practice_ratio) + \
-        #('\nagg_grades=\t' + pretty(self.agg_grades) if self.policy is not None else "") + \
-        #('\nagg_practices=\t' + pretty(self.agg_practices) if self.policy is not None else "") + \
-        str += ('thresholds=\t' + pretty(self.policy.thresholds) if self.policy is not None else "") + \
-               ('\ngrades=\t' + pretty(self.policy.grades) if self.policy is not None else "")+ \
-               ('\npractices=\t' + pretty(self.policy.practices) if self.policy is not None else "") + \
-               ('\nstudents=\t' + pretty(self.policy.students) if self.policy is not None else "")+ \
-               ('\nagg_grade=\t' + pretty(self.agg_grade) if self.policy is not None else "") + \
-               ('\nagg_practice=\t' + pretty(self.agg_practice) if self.policy is not None else "") + \
-               ('\nagg_student=\t' + pretty(self.agg_student) if self.policy is not None else "") + \
-               ('\nthresholds=\t' + pretty(self.thresholds) if self.thresholds is not None else "") + \
-               ('\ngrades=\t' + pretty(self.grades) if self.grades is not None else "") + \
-               ('\npractices=\t' + pretty(self.practices) if self.practices is not None else "") + \
-               ('\nstudents=\t' + pretty(self.students) if self.students is not None else "") + \
-               '\ngrade_all=\t' + pretty(self.grade_all) + \
-               '\npractice_all=\t' + pretty(self.practice_all) + \
-               '\nratio_all=\t' + pretty(self.ratio_all) + \
-               '\noverall_auc=\t' + pretty(self.auc_all) + "\n"
-        print str
+        message = "\n" + ",".join([file_name, type, overall_type]) + "\n"
+        message += ('#kcs=\t' + pretty(len(self.kcs)) + "\n")
+        if overall_type == "by_threshold":
+            message += '#thresholds=\t' + pretty(len(self.thresholds)) + "\n" + \
+                    'thresholds=\t' + pretty(self.thresholds) +  "\n" + \
+                    'grades=\t' + pretty(self.grades) +  "\n" + \
+                    'practices=\t' + pretty(self.practices) +  "\n" + \
+                    'students=\t' + pretty(self.students) + "\n"
+        else:
+            message += str(self.policy)
+            message += 'agg_grade=\t' + pretty(self.agg_grade) + "\n" + \
+                   'agg_practice=\t' + pretty(self.agg_practice) + "\n" + \
+                   'agg_student=\t' + pretty(self.agg_student) + "\n"
+            #str += 'thresholds=\t' + pretty(self.policy.thresholds) + 'grades=\t' + pretty(self.policy.grades) + 'practices=\t' + pretty(self.policy.practices) + 'students=\t' + pretty(self.policy.students)
+        message += 'grade_all=\t' + pretty(self.grade_all) + "\n" + \
+               'practice_all=\t' + pretty(self.practice_all) + "\n" + \
+               'ratio_all=\t' + pretty(self.ratio_all) + "\n" + \
+               'overall_auc=\t' + pretty(self.auc_all) + "\n"
+        print message
         file = open("log/white.log", "a")
-        file.write(str)
+        file.write(message)
 
 
 class WhiteVisualization():
@@ -323,16 +335,13 @@ def pretty(x):
 
 
 # def main(filenames="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#tom_predictions_chapter1.tsv #tdx_1.3.2.61_16.csv
-def main(filenames="example_data/example1.csv", type="uniform", overall_type="bykc", plot=True):
+def main(filenames="example_data/tom_predictions_chapter1.tsv", type="uniform", overall_type="by_threshold", plot=False):
     whites = []
     for input in filenames.split(","):
         print input
         df = pd.read_csv(input, sep=("\t" if "tsv" in input else ","))
         w = White(df)
-        if overall_type == "bykc":
-            w.aggregate_all_by_kc(type=type)
-        else:
-            w.aggregate_all_by_threshold(type=type)
+        w.aggregate_all_kcs(type=type, overall_type=overall_type)
         w.auc()
         w.log(input, type, overall_type)
         whites.append(w)
