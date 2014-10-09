@@ -14,7 +14,8 @@ class Evaluation:
         #TODO: I don' think white should receive the dataframe.. it should operate on the policy only!
         self.df = df
 
-        # TODO: what' the difference between self.grades, self.policy.grades and self.agg_grades? ... This is getting messy...
+        # TODO: what' the difference between self.grades, self.policy.grades and self.agg_grades? ... This is getting messy... you are creating instance variables for each method...
+        # this is the same problem we had with recommender.py.... i don' think we need all this instance variables.
         self.agg_grade = {}  # scalar
         self.agg_practice = {}  # scalar
         self.agg_student = {}  # scalar
@@ -45,7 +46,7 @@ class Evaluation:
         else:
             ''' Allows to get for just one threshold, or a specified set of thresholds'''
             if thresholds is None:
-                thresholds = self.policy.get_thresholds(self.df)
+                thresholds = self.policy.get_thresholds(self.df)  #TODO: this method is only for a Single KC policy...
             self.thresholds = thresholds
             self.grades = []
             self.practices = []
@@ -119,7 +120,6 @@ class Evaluation:
         return integrated_value
 
 
-    #TODO: We don' need to have an instance variable for every method.  That' very bad style. JPG removed self.auc.
     def auc(self):
         auc = float('nan')
         if self.df['outcome'].nunique() > 1:

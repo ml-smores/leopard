@@ -2,19 +2,25 @@ __author__ = 'ugonzjo'
 import numpy as np
 from common import *
 
-
-class SingleKCPolicy:
-    def __init__(self, df):
-        """ df has a column for student, kc, timestep, pcorrect, outcome """
+class Policy():
+    def __init__(self):
+        #TODO: do thresholds need to be sorted?
         self.thresholds = {}
         self.grades = {}
         self.practices = {}
         self.students = {}
 
-        # JPG: Do we need to sort??
 
+class SamplesFromFile(Policy):
+    def __init__(self, file):
+        #TODO this should fill the self.thresholds, self.grades, self.practices, self.students from a file (the file was possibly generated using synthetic data)
+        pass
+
+class SingleKCPolicy (Policy):
+    def __init__(self, df):
+        """ df has a column for student, kc, timestep, pcorrect, outcome """
+        Policy.__init__(self)
         self.calculate(df)
-
 
 
     @staticmethod
