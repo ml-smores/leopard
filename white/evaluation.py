@@ -1,21 +1,20 @@
-
 import numpy as np
 import sklearn.metrics as metrics
 from common import *
+import sys
 
 verbose = True
 
 
-class White:
+class Evaluation:
     aggregation_types = ["weighted", "uniform"]
 
     def __init__(self, df, policy):
         self.policy = policy
-        self.policy.calculate()
-
+        #TODO: I don' think white should receive the dataframe.. it should operate on the policy only!
         self.df = df
 
-        # TODO: what' the difference between self.grades, self.policy.grades and self.agg_grades? ... This is getting messy!!!
+        # TODO: what' the difference between self.grades, self.policy.grades and self.agg_grades? ... This is getting messy...
         self.agg_grade = {}  # scalar
         self.agg_practice = {}  # scalar
         self.agg_student = {}  # scalar
@@ -24,12 +23,14 @@ class White:
         self.students = None
         self.thresholds = None
         self.kcs = None
+
+        #KC specific?:
         self.grade_all = 0.0
         self.practice_all = 0.0
         self.ratio_all = 0.0
-        self.auc_all = 0.0
 
 
+    #TODO: I don' think evaluation.py should know about "KCs"... This is policy specific, and not all policies have KCs
     def aggregate_all_kcs(self, thresholds=None, type="uniform", overall_type="by_kc"):
         print "Aggregating all ", overall_type, " using ", type, " ..."
 
@@ -85,7 +86,7 @@ class White:
 
 
     def aggregate_each_kc(self, type="uniform"):
-        assert type in White.aggregation_types, "Unknown parameter"
+        assert type in Evaluation.aggregation_types, "Unknown parameter"
         for kc in self.policy.grades.keys():
             kc_grades = self.policy.grades[kc]
             kc_practices = self.policy.practices[kc]
@@ -118,17 +119,20 @@ class White:
         return integrated_value
 
 
+    #TODO: We don' need to have an instance variable for every method.  That' very bad style. JPG removed self.auc.
     def auc(self):
         auc = float('nan')
         if self.df['outcome'].nunique() > 1:
             fprs, tprs, thresholds = metrics.roc_curve(self.df['outcome'], self.df['pcorrect'])
             auc = metrics.auc(fprs, tprs)
-        self.auc_all = auc
+        return auc
 
 
     #def __repr__(self):
-    def log(self, file_name, type, overall_type):
-        message = "\n" + ",".join([file_name, type, overall_type]) + "\n"
+    #TODO: I removed the filename that was hardwired. This class should not have any filenames wired.
+    #TODO: this is messy, I would imagine this is should be in test-white :(
+    def log(self, input_name, type, overall_type, file=sys.stdout):
+        message = "\n" + ",".join([input_name, type, overall_type]) + "\n"
         message += ('#kcs=\t' + pretty(len(self.kcs)) + "\n")
         if overall_type == "by_threshold":
             message += '#thresholds=\t' + pretty(len(self.thresholds)) + "\n" + \
@@ -145,10 +149,8 @@ class White:
         message += 'grade_all=\t' + pretty(self.grade_all) + "\n" + \
                'practice_all=\t' + pretty(self.practice_all) + "\n" + \
                'ratio_all=\t' + pretty(self.ratio_all) + "\n" + \
-               'overall_auc=\t' + pretty(self.auc_all) + "\n"
+               'overall_auc=\t' + pretty(self.auc()) + "\n"
         print message
-        file = open("log/white.log", "a")
-        file.write(message)
 
 
 

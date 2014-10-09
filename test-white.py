@@ -1,6 +1,6 @@
 __author__ = 'ugonzjo'
 
-from white.white import *
+from white.evaluation import *
 from white.visualization import *
 from white.policies import *
 import pandas as pd
@@ -11,7 +11,7 @@ def main(filenames="example_data/example1.csv", type="uniform", overall_type="by
     for input in filenames.split(","):
         print input
         df = pd.read_csv(input, sep=("\t" if "tsv" in input else ","))
-        w = White(df, SingleKCPolicy(df))
+        w = Evaluation(df, SingleKCPolicy(df))
         w.aggregate_all_kcs(type=type, overall_type=overall_type)
         w.auc()
         w.log(input, type, overall_type)

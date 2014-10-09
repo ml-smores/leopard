@@ -10,9 +10,11 @@ class SingleKCPolicy:
         self.grades = {}
         self.practices = {}
         self.students = {}
-        self.kcs = None
+
         # JPG: Do we need to sort??
-        self.df = df #self.df = df.sort(columns=["kc", "student", "timestep"])
+
+        self.calculate(df)
+
 
 
     @staticmethod
@@ -51,10 +53,10 @@ class SingleKCPolicy:
             thresholds.append(1.0)
         return thresholds
 
-    def calculate(self):
-        self.kcs = self.df["kc"].unique()
-        for kc in self.kcs:
-            df_kc = self.df[self.df["kc"] == kc]
+    def calculate(self, df):
+        kcs = df["kc"].unique()
+        for kc in kcs:
+            df_kc = df[df["kc"] == kc]
             kc_thresholds = SingleKCPolicy.get_thresholds(df_kc)  # [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]#
             self.thresholds[kc] = kc_thresholds
             previous_grade = 0
