@@ -1,6 +1,7 @@
 __author__ = 'ugonzjo'
 import numpy as np
 from common import *
+import math
 
 class Policy():
     def __init__(self):
@@ -11,10 +12,20 @@ class Policy():
         self.students = {}
 
 
-class SamplesFromFile(Policy):
+class SyntheticPolicy(Policy):
     def __init__(self, file):
         #TODO this should fill the self.thresholds, self.grades, self.practices, self.students from a file (the file was possibly generated using synthetic data)
         pass
+
+    @staticmethod
+    def grade_generator(omega):
+        return omega ^ 2
+    @staticmethod
+    def practice_generator(omega):
+        return omega * 10
+    @staticmethod
+    def student_generator(omega):
+        return math.round(1000 - 1000 * omega)
 
 class SingleKCPolicy (Policy):
     def __init__(self, df):
