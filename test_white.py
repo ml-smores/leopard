@@ -6,7 +6,7 @@ from white.policies import *
 import pandas as pd
 
 # def main(filenames="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#tom_predictions_chapter1.tsv #tdx_1.3.2.61_16.csv
-def main(filenames="example_data/tdx_predictions_chapter1.tsv",
+def main(filenames="example_data/obj_predictions_chapter1.tsv",
          weighted_by_student=False,
          agg_all_kcs_type="by_threshold",
          integral_lower_bound=0.0,
@@ -20,7 +20,7 @@ def main(filenames="example_data/tdx_predictions_chapter1.tsv",
         policy = SingleKCPolicy(df, debug)
         w = Evaluation(df, policy=policy, weighted_by_student=weighted_by_student, agg_all_kcs_type=agg_all_kcs_type, integral_lower_bound=integral_lower_bound, debug=debug)
         w.aggregate_all_kcs()
-        w.auc()
+        w.compute_standard_metrics()
         w.log(input)
         whites.append(w)
 

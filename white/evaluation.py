@@ -3,7 +3,7 @@ import sklearn.metrics as metrics
 from common import *
 import sys
 
-verbose = True
+verbose = False
 
 
 class Evaluation:
@@ -24,6 +24,7 @@ class Evaluation:
         self.agg_all_kcs_type = agg_all_kcs_type
         self.integral_lower_bound = integral_lower_bound
         self.debug = debug
+        self.standard_metrics = {}
         # TODO: what' the difference between self.scores, self.policy.scores and self.agg_grades? ... This is getting messy... you are creating instance variables for each method...
         # this is the same problem we had with recommender.py.... i don' think we need all this instance variables.
         self.agg_grade = {}  # scalar
@@ -147,12 +148,15 @@ class Evaluation:
         return integrated_value
 
 
-    def auc(self):
+    def compute_standard_metrics(self):
         auc = float('nan')
         if self.df['outcome'].nunique() > 1:
             fprs, tprs, thresholds = metrics.roc_curve(self.df['outcome'], self.df['pcorrect'])
             auc = metrics.auc(fprs, tprs)
-        return auc
+        accuracy = metrics.accuracy_score(self.df['outcome'], self.df['pcorrect'] >= 0.5)
+        self.standard_metrics["auc"] = auc
+        self.standard_metrics["accuracy"] = accuracy
+        self.standard_metrics["%correct"] = sum(self.df['outcome']) / (1.0 * len(self.df['outcome']))
 
 
     #def __repr__(self):
@@ -177,7 +181,7 @@ class Evaluation:
         message += ('grade_all=\t' + pretty(self.grade_all) + "\n") if self.grade_all > -1 else ""  + \
                ('practice_all=\t' + pretty(self.practice_all) + "\n") if self.practice_all > -1 else "" + \
                'ratio_all=\t' + pretty(self.ratio_all) + "\n" + \
-               'overall_auc=\t' + pretty(self.auc()) + "\n"
+               'standard_metrics=\t' + pretty(self.standard_metrics) + "\n"
         print message
 
 
