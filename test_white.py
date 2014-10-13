@@ -10,7 +10,7 @@ def main(filenames="example_data/obj_predictions_chapter1.tsv",
          weighted_by_student=False,
          agg_all_kcs_type="by_threshold",
          integral_lower_bound=0.0,
-         plot=False,
+         plot=True,
          debug=True):
     '''agg_all_type: by_threshold | by_kc '''
     whites = []
@@ -26,10 +26,11 @@ def main(filenames="example_data/obj_predictions_chapter1.tsv",
 
         if plot:
             v = WhiteVisualization(w)
+            kctype = input.split('/')[1].split('_')
             if agg_all_kcs_type == "by_kc":
-                v.plot_by_threshold("single", "images/tdx_")
+                v.plot_by_threshold("single", "images/"+kctype[0]+"_")
             else:
-                v.plot_by_threshold("all", "images/tdx_")
+                v.plot_by_threshold("all", "images/"+kctype[0]+"_")
             # output = os.path.splitext(input)[0] + "_{}.png"
             # v.graph_wuc(output)
     print "Done"

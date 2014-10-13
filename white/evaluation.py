@@ -19,22 +19,26 @@ class Evaluation:
         # TODO: I don' think white should receive the dataframe.. it should operate on the policy only!
         # hy: But evaluation.py is also responsible for getting auc...
         self.df = df
+        self.kcs = None
+
         self.policy = policy
         self.weighted_by_student  = weighted_by_student
         self.agg_all_kcs_type = agg_all_kcs_type
         self.integral_lower_bound = integral_lower_bound
         self.debug = debug
         self.standard_metrics = {}
+
         # TODO: what' the difference between self.scores, self.policy.scores and self.agg_grades? ... This is getting messy... you are creating instance variables for each method...
         # this is the same problem we had with recommender.py.... i don' think we need all this instance variables.
         self.agg_grade = {}  # scalar
         self.agg_practice = {}  # scalar
         self.agg_student = {}  # scalar
+
         self.scores = None
         self.practices = None
         self.students = None
         self.thresholds = None
-        self.kcs = None
+        self.ratios = None
 
         #KC specific?: correspond to the entire df
         self.grade_all = -1.0
@@ -63,6 +67,7 @@ class Evaluation:
             self.scores = []
             self.practices = []
             self.students = []
+            self.ratios = []
             if verbose:
                 print pretty(thresholds)
             for threshold in thresholds:
@@ -83,20 +88,22 @@ class Evaluation:
                     score += score_a_kc / (1.0 * len(self.kcs))
                     practice += practice_a_kc
                     student += student_a_kc # Caution: reading threshold of a kc is different from reaching threshold of another kc, so i didn't collect set
+                ratio = practice / (1.0 * score)
                 # get score, practice, student at each threshold
                 if len(self.scores) > 0:
                     self.scores.append(max(self.scores[-1], score))
                     self.practices.append(max(self.practices[-1], practice))
+                    self.ratios.append(max(self.ratios[-1], ratio))
                 else:
                     self.scores.append(score)
                     self.practices.append(practice)
+                    self.ratios.append(ratio)
                 self.students.append(student)
             if self.weighted_by_student:
                 self.scores = (np.array(self.scores) * np.array(self.students) / self.students[0]).tolist()
                 self.practices = (np.array(self.practices) * np.array(self.students) / self.students[0]).tolist()
-
-            ratios = np.divide(self.practices, self.scores)
-            self.ratio_all = self.integration(thresholds, ratios)
+            #self.ratios = np.divide(self.practices, self.scores)
+            self.ratio_all = self.integration(thresholds, self.ratios)
             #self.grade_all = self.integration(thresholds, self.scores, integral_lower_bound)  #self.grade_all = np.mean(self.scores)
             #self.practice_all = self.integration(thresholds, self.practices, integral_lower_bound) #self.practice_all = np.mean(self.practices)
             #self.ratio_all =  (1.0 * self.practice_all) / self.grade_all
@@ -165,12 +172,13 @@ class Evaluation:
     def log(self, input_name):
         #type, overall_type, file=sys.stdout
         message = "\n" + ",".join([input_name, "agg_all_kcs_type="+self.agg_all_kcs_type, "integral_lower_bound="+ pretty(self.integral_lower_bound), "weighted_by_student=" + str(self.weighted_by_student), "debug="+str(self.debug)]) + "\n"
-        message += ('#kcs=\t' + pretty(len(self.kcs)) + "\n")
+        message += ('#kcs=\t' + pretty(len(self.kcs)) + ('\n#original_students=\t' + pretty(self.df.student.nunique())) + "\n")
         if self.agg_all_kcs_type == "by_threshold":
             message += '#thresholds=\t' + pretty(len(self.thresholds)) + "\n" + \
                     'thresholds=\t' + pretty(self.thresholds) +  "\n" + \
                     'scores=\t' + pretty(self.scores) +  "\n" + \
                     'practices=\t' + pretty(self.practices) +  "\n" + \
+                    'ratios=\t' + pretty(self.ratios) + "\n" + \
                     'students=\t' + pretty(self.students) + "\n"
         else:
             message += str(self.policy)
