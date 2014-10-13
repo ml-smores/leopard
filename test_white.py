@@ -6,26 +6,32 @@ from white.policies import *
 import pandas as pd
 
 # def main(filenames="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#tom_predictions_chapter1.tsv #tdx_1.3.2.61_16.csv
-def main(filenames="example_data/example1.csv", type="uniform", overall_type="by_threshold", plot=False):
+def main(filenames="example_data/tdx_predictions_chapter1.tsv",
+         weighted_by_student=False,
+         agg_all_kcs_type="by_threshold",
+         integral_lower_bound=0.0,
+         plot=False,
+         debug=True):
+    '''agg_all_type: by_threshold | by_kc '''
     whites = []
     for input in filenames.split(","):
         print input
         df = pd.read_csv(input, sep=("\t" if "tsv" in input else ","))
-        w = Evaluation(df, SingleKCPolicy(df))
-        w.aggregate_all_kcs(type=type, overall_type=overall_type)
+        policy = SingleKCPolicy(df, debug)
+        w = Evaluation(df, policy=policy, weighted_by_student=weighted_by_student, agg_all_kcs_type=agg_all_kcs_type, integral_lower_bound=integral_lower_bound, debug=debug)
+        w.aggregate_all_kcs()
         w.auc()
-        w.log(input, type, overall_type)
+        w.log(input)
         whites.append(w)
 
         if plot:
             v = WhiteVisualization(w)
-            if overall_type == "bykc":
+            if agg_all_kcs_type == "by_kc":
                 v.plot_by_threshold("single", "images/tdx_")
             else:
                 v.plot_by_threshold("all", "images/tdx_")
             # output = os.path.splitext(input)[0] + "_{}.png"
             # v.graph_wuc(output)
-
     print "Done"
 
     # If you need to do multi-dataset comparison do them here:
