@@ -11,3 +11,6 @@ def pretty(x):
         return "%4.3f" % x
     else:
         return str(x)
+
+def intstr(x):
+    return str(int(x))

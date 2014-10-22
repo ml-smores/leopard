@@ -1,6 +1,8 @@
 __author__ = 'ugonzjo'
 
 from matplotlib import pyplot as pl, pyplot, cm, colors
+from scipy import stats
+import pandas as pd
 
 
 class WhiteVisualization():
@@ -11,21 +13,17 @@ class WhiteVisualization():
     def plot_by_threshold(self, type, figure_path="images/"):
         if type == "single" and self.white_obj.policy is not None: #plot each KC
             for kc in self.white_obj.policy.scores.keys():
-                thresholds = self.white_obj.policy.thresholds[kc]
-                scores = self.white_obj.policy.scores[kc]
-                practices = self.white_obj.policy.practices[kc]
+                thresholds, scores, practices, _, _ = self.get_after_integral_lower_bound(self.white_obj.policy.thresholds[kc], self.white_obj.policy.scores[kc], self.white_obj.policy.practices[kc])
                 self.plot_component_relation(kc, thresholds, scores, figure_path, "threshold", "score", [0, 1], [0, 1])
-                self.plot_component_relation(kc, thresholds, practices, figure_path, "threshold", "practice", [0, 1], [0, max(practices)])
-                self.plot_component_relation(kc, practices, scores, figure_path, "practice", "score", [0, max(practices)], [0,1])
+                self.plot_component_relation(kc, thresholds, practices, figure_path, "threshold", "effort", [0, 1], [0, max(practices)])
+                self.plot_component_relation(kc, practices, scores, figure_path, "effort", "score", [0, max(practices)], [0,1])
         elif type == "multiple" and self.white_obj.policy is not None: #plot multiple kcs in one figure
             fig1 = pl.figure(1)
             fig2 = pl.figure(2)
             fig3 = pl.figure(3)
             labels = []
             for kc in self.white_obj.policy.scores.keys():
-                thresholds = self.white_obj.policy.thresholds[kc]
-                scores = self.white_obj.policy.scores[kc]
-                practices = self.white_obj.policy.practices[kc]
+                thresholds, scores, practices, _, _ = self.get_after_integral_lower_bound(self.white_obj.policy.thresholds[kc], self.white_obj.policy.scores[kc], self.white_obj.policy.practices[kc])
                 color = "green" if "easy" in kc else ("yellow" if "medium" in kc else "red")
                 legend = ""
                 label = "easy" if "easy" in kc else ("medium" if "medium" in kc else "hard")
@@ -33,27 +31,25 @@ class WhiteVisualization():
                     legend = label
                     labels.append(legend)
                 pl.figure(1)
-                fig1 = self.plot_component_relation(kc, thresholds, scores, figure_path, "threshold", "score", [0, 1], [0, 1], linewidth=1, ycolor=color, label=legend, dotsize=10, figure=fig1)
+                fig1 = self.plot_component_relation(kc, thresholds, scores, figure_path, "threshold", "score", [self.white_obj.integral_lower_bound, 1], [0, 1], linewidth=1, ycolor=color, label=legend, dotsize=10, figure=fig1)
                 pl.figure(2)
-                fig2 = self.plot_component_relation(kc, thresholds, practices, figure_path, "threshold", "practices", [0, 1], [0, max(practices)], linewidth=1, ycolor=color, label=legend, dotsize=10, figure=fig2)
+                fig2 = self.plot_component_relation(kc, thresholds, practices, figure_path, "threshold", "effort", [self.white_obj.integral_lower_bound, 1], [0, max(practices)], linewidth=1, ycolor=color, label=legend, dotsize=10, figure=fig2)
                 pl.figure(3)
-                fig3 = self.plot_component_relation(kc, practices, scores, figure_path, "practice", "score", [0, max(practices)], [0,1], linewidth=1, ycolor=color, label=legend, dotsize=10, figure=fig3)
+                fig3 = self.plot_component_relation(kc, practices, scores, figure_path, "effort", "score", [0, max(practices)], [0,1], linewidth=1, ycolor=color, label=legend, dotsize=10, figure=fig3)
             pl.figure(1)
             pl.savefig(figure_path + "score_threshold_multiple.png")
             pl.figure(2)
-            pl.savefig(figure_path + "practice_threshold_multiple.png")
+            pl.savefig(figure_path + "effort_threshold_multiple.png")
             pl.figure(3)
-            pl.savefig(figure_path + "score_practice_multiple.png")
+            pl.savefig(figure_path + "score_effort_multiple.png")
         elif type == "all" and self.white_obj.thresholds is not None: #plot for all KCs
-            thresholds = self.white_obj.thresholds
-            scores = self.white_obj.scores
-            practices = self.white_obj.practices
-            ratios = self.white_obj.ratios
-            students = self.white_obj.students
-            self.plot_component_relation("all", thresholds, scores, figure_path, "threshold", "score", [0,1], [0, 1], nb_students=students)
-            self.plot_component_relation("all", thresholds, practices, figure_path, "threshold", "practice", [0, 1], [0, max(practices)], nb_students=students)
-            self.plot_component_relation("all", practices, scores, figure_path, "practice", "score", [0, max(practices)], [0,1], nb_students=students)
-            self.plot_component_relation("all", thresholds, ratios, figure_path, "threshold", "practice/score", [0, 1], [0, max(ratios)], nb_students=students)
+            thresholds, scores, practices, ratios, students = self.get_after_integral_lower_bound(self.white_obj.thresholds, self.white_obj.scores, self.white_obj.practices, self.white_obj.ratios, self.white_obj.students)
+            nb_kcs = len(self.white_obj.kcs)
+            self.plot_component_relation("all", thresholds, scores, figure_path, "threshold", "score", [self.white_obj.integral_lower_bound, 1], nb_students=students, nb_kcs=nb_kcs) #[0, 1],
+            self.plot_component_relation("all", thresholds, practices, figure_path, "threshold", "effort", [self.white_obj.integral_lower_bound, 1], nb_students=students, nb_kcs=nb_kcs) #[0, max(practices)],
+            self.plot_component_relation("all", practices, scores, figure_path, "effort", "score", nb_students=students, nb_kcs=nb_kcs) #[0, max(practices)], [0,1],
+            self.plot_component_relation("all", thresholds, ratios, figure_path, "threshold", "score/effort", [self.white_obj.integral_lower_bound, 1], [0, max(ratios)], nb_students=students, nb_kcs=nb_kcs) #
+            self.plot_component_relation("all", thresholds, students, figure_path, "threshold", "students", [self.white_obj.integral_lower_bound, 1], nb_students=students, nb_kcs=nb_kcs) #
         else:
             print "ERROR: Please reconfigure!"
             exit(-1)
@@ -75,29 +71,82 @@ class WhiteVisualization():
 
     def plot_component_relation(self, kc, x, y, figure_path, xlabel, ylabel,
                                 xlim=None, ylim=None, linewidth=3, ycolor="black", label=None, dotsize=20,
-                                figure=None, axis=None, nb_students=None):
+                                figure=None, axis=None, nb_students=None, perkc_stu_thd = 30, nb_kcs=None):
         if figure is None:
             fig, ax = pl.subplots()
         else:
             fig = figure
         if nb_students is not None:
-            x = [x[i] for i, v in enumerate(nb_students) if v >= 250]
-            y = [y[i] for i, v in enumerate(nb_students) if v >= 250]
+            x = [x[i] for i, v in enumerate(nb_students) if v > 0]#30 #250
+            y = [y[i] for i, v in enumerate(nb_students) if v > 0]#30 #250
+            dot_color = [ycolor] * len(y)
+            if nb_kcs is not None:
+                perkc_stu_thd *= nb_kcs
+            for pos in range(len(y)):
+                if nb_students[pos] < perkc_stu_thd:
+                    dot_color[pos] = "lightgrey"
+            #todo: add sizes correspond to #students
+        fig.subplots_adjust(bottom=0.15)
+        pl.scatter(x, y, color=dot_color, s=dotsize)
+        # if label is None:
+        #     pl.step(x, y, color=dot_color, linewidth=linewidth)
+        # else:
+        #     pl.step(x, y, color=dot_color, linewidth=linewidth, label=label)
+        #     pl.legend(loc="lower right", prop={'size':9}) #ncol=4,
 
-        pl.scatter(x, y, color=ycolor, s=dotsize)
-        if label is None:
-            pl.step(x, y, color=ycolor, linewidth=linewidth)
-        else:
-            pl.step(x, y, color=ycolor, linewidth=linewidth, label=label)
-            pl.legend(loc="lower right", prop={'size':9}) #ncol=4,
-
-        pl.ylabel(ylabel, fontsize=12)#ycolor
-        pl.xlabel(xlabel, fontsize=12)
+        pl.ylabel(ylabel, fontsize=20)#ycolor
+        pl.xlabel(xlabel, fontsize=20)
+        pl.yticks(fontsize=18)
+        pl.xticks(fontsize=18)
         if ylim is not None:
             pl.ylim(ylim)
         if xlim is not None:
             pl.xlim(xlim)
         if figure is None:
-            pl.savefig(figure_path + (ylabel.replace("/", "_over_") + "_" + xlabel + "_{}.png").format(kc))
+            pl.savefig(figure_path + (ylabel.replace("/", "_over_") + "_" + xlabel + "_{}.pdf").format(kc))
             pl.close(fig)
         return fig
+
+
+    @staticmethod
+    def plot_auc_vs_white(white_objs, file):
+        auc_list = []
+        white_list = []
+        kc_list = []
+        for white_obj in white_objs:
+            auc_list.append(white_obj.standard_metrics["auc"])
+            white_list.append(white_obj.ratio_all)
+            kc_list.append("_".join(white_obj.kcs))
+        x = white_list
+        y = auc_list
+        print x, y
+        df = pd.DataFrame({"kcs":kc_list, "white":white_list, "auc":auc_list})
+        df.to_csv("example_data/synthetic_data_white_vs_auc.csv")
+
+        correlation, correlation_pval = stats.spearmanr(x, y)
+        correlation_str = "Spearman correlation : {:4.2f}".format(correlation) + ", p-value:{:5.3f}".format(correlation_pval)
+
+        fig, ax = pl.subplots()
+        fig.subplots_adjust(bottom=0.15)
+        pl.scatter(x, y, s=20)#, label=correlation_str)
+        #pl.plot(x, y, linewidth=3, label=correlation_str)
+        #pl.legend(loc="upper right", prop={'size':15}) #ncol=4,
+        pl.title(correlation_str, fontsize=20)
+        pl.ylabel("AUC", fontsize=20)#ycolor
+        pl.xlabel("WHITE", fontsize=20)
+        pl.yticks(fontsize=18)
+        pl.xticks(fontsize=18)
+        pl.savefig(file)
+        pl.close(fig)
+
+    def get_after_integral_lower_bound(self, thresholds, scores, practices, ratios=None, students=None):
+        if self.white_obj.integral_lower_bound > 0.0:
+            threshold_pos = next(i for i, v in enumerate(thresholds) if v > self.white_obj.integral_lower_bound)
+            thresholds = thresholds[threshold_pos:]
+            scores = scores[threshold_pos:]
+            practices = practices[threshold_pos:]
+            if ratios is not None:
+                ratios = ratios[threshold_pos:]
+            if students is not None:
+                students = students[threshold_pos:]
+        return thresholds, scores, practices, ratios, students

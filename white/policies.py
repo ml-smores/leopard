@@ -33,31 +33,40 @@ class SyntheticPolicy(Policy):
 
 
 class SingleKCPolicy (Policy):
-    def __init__(self, df, debug=False):
+    def __init__(self, df, overall_stu_perkcscore=False, component_non_decreasing=True, debug=False):
         """ df has a column for student, kc, timestep, pcorrect, outcome """
         Policy.__init__(self)
+        self.overall_stu_perkcscore = overall_stu_perkcscore
+        self.component_non_decreasing = component_non_decreasing #not used yet
         self.debug = debug
         self.calculate(df)
 
     def score_practice_per_kc(self, df_kc, threshold):
-        score = 0.0
+        score = -1.0 #-1 means no students reaching current threshold, don't change easily! in evaluation.py needs this to judge some conditions!
         scores = []
-        practice = 0.0
+        practice = -1.0 #-1 means no students reaching current threshold, don't change easily! in evaluation.py needs this to judge some conditions!
         practices = []
         nb_student = 0
-        # grouped = df_kc.groupby(by="student",sort=False)
-        # reached_per_stu = pd.DataFrame({"reached_threshold": grouped["pcorrect"].max() >= threshold})
-        # for student in reached_per_stu.index.unique():
-        if self.debug:
-            # TODO (hy): this can be a bug for running models where pcorrect is decreasing; but so far works well for pfa
-            df_after_threshold = df_kc[df_kc["pcorrect"] >= threshold]
-            if len(df_after_threshold) > 0:
-                score = np.sum(df_after_threshold["outcome"]) / (1.0 * len(df_after_threshold["outcome"]))
-                nb_student = df_after_threshold.student.nunique()
-                # TODO(hy): Different from previous. Previously, even student doesn't reach thresheld, still count the practice
-                df_before_threshold = df_kc[df_kc["pcorrect"] < threshold]
-                if len(df_before_threshold) > 0:
-                    practice = df_before_threshold.groupby(by=["student"], sort=False).size().mean()  # return Series #TODO: Consider int or float?
+        if self.overall_stu_perkcscore:
+            if self.debug:
+                # TODO (hy): this can be a bug for running models where pcorrect is decreasing; but so far works well for pfa
+                df_after_threshold = df_kc[df_kc["pcorrect"] >= threshold]
+                if len(df_after_threshold) > 0:
+                    score = np.sum(df_after_threshold["outcome"]) / (1.0 * len(df_after_threshold["outcome"]))
+                    nb_student = df_after_threshold.student.nunique()
+                    # TODO(hy): Different from previous. Previously, even student doesn't reach thresheld, still count the practice
+                    df_kc = df_kc[df_kc["student"].isin(df_after_threshold.student.unique())]
+                    df_before_threshold = df_kc[df_kc["pcorrect"] < threshold]
+                    if len(df_before_threshold) > 0:
+                        practice = df_before_threshold.groupby(by=["student"], sort=False).size().mean()  # return Series #TODO: Consider int or float?
+                    else:
+                        practice = 0
+                elif threshold != 1.0:
+                    print "ERROR: there should be at least one student!"
+                    exit(-1)
+            else:
+                print "To implement..."
+                exit(-1)
         else:
             # TODO (hy): Following code is super slow!
             for student in df_kc.student.unique():
@@ -124,27 +133,6 @@ class SingleKCPolicy (Policy):
     #     return practice
     #
     #
-    # # TODO: deprecated
-    # @staticmethod
-    # def score_practice_per_student(df_kc, threshold):
-    #     scores = []
-    #     practices = []
-    #     students = []
-    #     nb_stu = 0
-    #     # TODO: There is a bug here, I think.  We need to consider timesteps.
-    #     # Imagine that the threshold changed at timestep = 3, but then pcorrect decreased again at timestep=5
-    #     for student in df_kc.student.unique():
-    #         df_a_stu = df_kc[df_kc["student"] == student]
-    #         df_after_threshold = df_a_stu[df_a_stu["pcorrect"] >= threshold]
-    #         df_before_threshold = df_a_stu[df_a_stu["pcorrect"] < threshold]
-    #         # !!!TODO(hy): May need to ensure non-decreasing per student (now only considers non-decreasing on kc level or on entire dataset level)
-    #         if len(df_after_threshold) > 0:
-    #             scores.append(np.sum(df_after_threshold["outcome"]) / (1.0 * len(df_after_threshold["outcome"])))
-    #             practices.append(len(df_before_threshold))
-    #             students.append(student)
-    #             nb_stu += 1
-    #     return scores, practices, students, nb_stu
-
 
     @staticmethod
     def get_thresholds(df_kc):
@@ -177,12 +165,15 @@ class SingleKCPolicy (Policy):
                 # else:
                 #score, student = SingleKCPolicy.score_per_kc(df_kc, threshold)
                 score, practice, student = self.score_practice_per_kc(df_kc, threshold)
-                kc_scores.append(max(score, previous_score))
+                if self.component_non_decreasing:
+                    kc_scores.append(max(score, previous_score))
+                    kc_practices.append(max(practice, previous_practice))
+                    previous_score = max(score, previous_score)
+                    previous_practice = max(practice, previous_practice)
+                else:
+                    kc_scores.append(score)
+                    kc_practices.append(practice)
                 kc_students.append(student)  # of students that reach this threshold
-                previous_score = max(score, previous_score)
-                #practice = SingleKCPolicy.practice_per_kc(df_kc, threshold)
-                kc_practices.append(max(practice, previous_practice))
-                previous_practice = max(practice, previous_practice)
             self.scores[kc] = kc_scores
             self.practices[kc] = kc_practices
             self.students[kc] = kc_students
