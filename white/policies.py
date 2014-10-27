@@ -4,87 +4,99 @@ from common import *
 import math
 import pandas as pd
 
+class SimulationResult:
+    def __init__(self, n_students, effort, mean_pre_outcome = -1, mean_post_outcome = -1):
+        self.n_students = n_students
+        self.effort = effort
+        self.mean_pre_outcome = mean_pre_outcome
+        self.mean_post_outcome = mean_post_outcome
+    def __repr__(self):
+        return "< ({}) {}  [ {} | {}  ] >".format(self.n_students, self.effort, self.mean_pre_outcome, self.mean_post_outcome)
+
+
+
+
 class Policy():
     def __init__(self):
-        ''' All of them: key=kc, value=score/practice per student '''
-        #TODO: do thresholds need to be sorted?
-        self.thresholds = {}
-        self.scores = {}
-        self.practices = {}
-        self.students = {}
-        # self.students = {} #value is #students reaching threshold for a kc
-        # self.nb_obs_reach = {} #value is the #observations corresponding to the part reaching threshold for a kc, in order to recover #correct with self.scores
-
-
-class SyntheticPolicy(Policy):
-    def __init__(self, file):
-        #TODO this should fill the self.thresholds, self.scores, self.practices, self.students from a file (the file was possibly generated using synthetic data)
         pass
 
-    @staticmethod
-    def score_generator(omega):
-        return omega ^ 2
-    @staticmethod
-    def practice_generator(omega):
-        return omega * 10
-    @staticmethod
-    def student_generator(omega):
-        return math.round(1000 - 1000 * omega)
+    def simulate(self):
+        pass
+
+
+
 
 
 class SingleKCPolicy (Policy):
-    def __init__(self, df, overall_stu_perkcscore=False, component_non_decreasing=True, debug=False):
+    def __init__(self, df):
         """ df has a column for student, kc, timestep, pcorrect, outcome """
         Policy.__init__(self)
-        self.overall_stu_perkcscore = overall_stu_perkcscore
-        self.component_non_decreasing = component_non_decreasing #not used yet
-        self.debug = debug
-        self.calculate(df)
+        self.df = df
 
-    def score_practice_per_kc(self, df_kc, threshold):
-        score = -1.0 #-1 means no students reaching current threshold, don't change easily! in evaluation.py needs this to judge some conditions!
-        scores = []
-        practice = -1.0 #-1 means no students reaching current threshold, don't change easily! in evaluation.py needs this to judge some conditions!
-        practices = []
-        nb_student = 0
-        if self.overall_stu_perkcscore:
-            if self.debug:
-                # TODO (hy): this can be a bug for running models where pcorrect is decreasing; but so far works well for pfa
-                df_after_threshold = df_kc[df_kc["pcorrect"] >= threshold]
-                if len(df_after_threshold) > 0:
-                    score = np.sum(df_after_threshold["outcome"]) / (1.0 * len(df_after_threshold["outcome"]))
-                    nb_student = df_after_threshold.student.nunique()
-                    # TODO(hy): Different from previous. Previously, even student doesn't reach thresheld, still count the practice
-                    df_kc = df_kc[df_kc["student"].isin(df_after_threshold.student.unique())]
-                    df_before_threshold = df_kc[df_kc["pcorrect"] < threshold]
-                    if len(df_before_threshold) > 0:
-                        practice = df_before_threshold.groupby(by=["student"], sort=False).size().mean()  # return Series #TODO: Consider int or float?
-                    else:
-                        practice = 0
-                elif threshold != 1.0:
-                    print "ERROR: there should be at least one student!"
-                    exit(-1)
-            else:
-                print "To implement..."
-                exit(-1)
-        else:
-            # TODO (hy): Following code is super slow!
-            for student in df_kc.student.unique():
-                df_a_stu = df_kc[df_kc["student"] == student]
-                # !!!TODO(hy): May need to ensure non-decreasing on student level (now only considers non-decreasing on kc level or on entire dataset level)
-                if len(df_a_stu[df_a_stu["pcorrect"] >= threshold]) > 0:
-                    threshold_pos = next(i for i, v in enumerate(df_a_stu["pcorrect"]) if v >= threshold)
-                    df = df_a_stu.iloc[threshold_pos:]
-                    scores.append(np.sum(df["outcome"]) / (1.0 * len(df["outcome"])))
-                    if threshold_pos > 0:
-                        df = df_a_stu.iloc[: threshold_pos]
-                        practices.append(len(df))
-                    else:
-                        practices.append(0)
-                    nb_student += 1
-            score = np.mean(scores) if len(scores) > 0 else 0.0
-            practice = np.mean(practices) if len(practices) > 0 else 0
-        return score, practice, nb_student
+    def split_kc(self, threshold):
+        df_kcs = self.df.groupby("kc")
+        for g, df_kc in df_kcs:
+            #  Add timestep column
+
+            df_kc["timestep"] = 1
+            df_kc["timestep"] = df_kc.groupby("student")["timestep"].cumsum()
+
+
+            # Get boundary:
+            decisions =  self.get_boundaries(df_kc, threshold)
+            decisions = df_kc.merge(decisions, on=["student"], how="left")
+            print decisions
+
+            # split
+            mastered_rows = (decisions["timestep"]  >=  decisions["boundary"])
+            mastered   = decisions[  mastered_rows ]
+            unmastered = decisions[ ~ mastered_rows ]  # this takes account of NaN
+
+            # calculate:
+            pre = self.get_score(unmastered, "pre")
+            pos = self.get_score(mastered, "pos")
+
+            #join previously split:
+            print "!!!!!"
+            print pre.join(pos, how="outer", rsuffix="1")
+
+            #join again
+            #assert mas.n_students == unm.n_students
+            #assert mas.n_students == unm.n_students
+
+
+
+
+
+    def get_boundaries(self, df_kc, threshold):
+        df_filtered = df_kc[ df_kc["predicted_outcome"]  >= threshold  ]
+        df_filtered["boundary"] = df_filtered["timestep"]
+        df_students = df_filtered.groupby("student")
+        return  df_students.first().reset_index()[ ["student", "boundary"] ]
+
+
+    def get_score(self, df, prefix):
+        df = df.copy()
+        # Unfortunately, pandas' groupby doesn't work on NaN values.
+        # Remove NaNs:
+        df["boundary"] = df["boundary"].fillna(-1)
+
+        students = df.groupby("student")
+
+        ans = students.agg({ "boundary" : ['count', 'max'], "outcome": lambda(l): np.sum([e for e in l if e == 1]) })
+        ans = ans.rename(columns={"count"   : prefix+"_n",
+                                  "max"     : prefix+"_effort",
+                                  "<lambda>": prefix+"_correct"})
+
+
+        ans.columns = ans.columns.get_level_values(1)
+        # Add NaNs back:
+        for c in ans.columns:
+            ans.loc[ ans[c] == -1 , c ] = float("nan")
+
+        return ans
+
+
 
     # @staticmethod
     # def score_per_kc(df_kc, threshold):

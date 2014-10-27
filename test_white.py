@@ -7,36 +7,25 @@ import pandas as pd
 
 
 # def main(filenames="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#tom_predictions_chapter1.tsv #tdx_1.3.2.61_16.csv
-def main(filenames="example_data/tom_predictions_chapter1.tsv",
-         weighted_by_student=False,
-         agg_all_kcs_type="by_threshold",
-         integral_lower_bound=0.0,
-         overall_stu_perkcscore=True, #here if true, it computes score over all datapoints per kc(which is fast); otherwise, it will do average across students per kc (which is slow now)
-         component_non_decreasing=True,
-         plot=True,
-         debug=True):
-    '''agg_all_type: by_threshold | by_kc '''
+def main(filenames="example_data/example1.csv", plot=True):
     whites = []
     for input in filenames.split(","):
         print input
         df = pd.read_csv(input, sep=("\t" if "tsv" in input else ","))
-        df = df[df["kc"].isin(["1_4_medium","1_3_easy"])] #"1_4_medium" (good learning curve) #"1_3_easy" (good be less good)
-        policy = SingleKCPolicy(df, overall_stu_perkcscore, component_non_decreasing, debug) #no matter it's by kc or by threshold, I always compute score(effort) per kc across that kc's threhsold first
-        w = Evaluation(df, policy=policy, weighted_by_student=weighted_by_student, agg_all_kcs_type=agg_all_kcs_type, integral_lower_bound=integral_lower_bound, component_non_decreasing=component_non_decreasing)
-        w.aggregate_all_kcs()
-        w.compute_standard_metrics()
-        w.log(input)
-        whites.append(w)
 
-        if plot:
-            v = WhiteVisualization(w)
-            kctype = input.split('/')[1].split('_')
-            if agg_all_kcs_type == "by_kc":
-                v.plot_by_threshold("single", "images/"+kctype[0]+"_")
-            else:
-                v.plot_by_threshold("all", "images/"+kctype[0]+"_")
-            # output = os.path.splitext(input)[0] + "_{}.png"
-            # v.graph_wuc(output)
+        policy = SingleKCPolicy(df)
+        policy.split_kc(0.4)
+
+
+
+        #if plot:
+        #    v = WhiteVisualization(w)
+        #    kctype = input.split('/')[1].split('_')
+        #    if agg_all_kcs_type == "by_kc":
+        #        v.plot_by_threshold("single", "images/"+kctype[0]+"_")
+        #    else:
+        #        v.plot_by_threshold("all", "images/"+kctype[0]+"_")
+
     print "Done"
 
     # If you need to do multi-dataset comparison do them here:
