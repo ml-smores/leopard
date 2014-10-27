@@ -43,6 +43,8 @@ class SingleKCPolicy (WhitePolicy):
             #join previously split:
             kc = pre.join(pos, how="outer")
             kc["id"] = g
+            kc["mastered"] = ~ kc["pos_effort"].isnull()
+
             ans.append(kc)
 
         return pd.concat(ans)
@@ -53,8 +55,14 @@ class SingleKCPolicy (WhitePolicy):
     def get_boundaries(self, df_kc, threshold):
         df_filtered = df_kc[ df_kc["predicted_outcome"]  >= threshold  ]
         df_filtered["boundary"] = df_filtered["timestep"]
+
         df_students = df_filtered.groupby("student")
-        return  df_students.first().reset_index()[ ["student", "boundary"] ]
+        df_boundaries = df_students.first().reset_index()
+
+        if len(df_boundaries) == 0:
+            df_boundaries["student"] = [] # Bug fix
+
+        return  df_boundaries[ ["student", "boundary"] ]
 
 
     def get_student_stats(self, df, prefix):
@@ -67,15 +75,19 @@ class SingleKCPolicy (WhitePolicy):
 
         ans = students.agg({ "boundary" : ['count', 'max'], "outcome": lambda(l): np.sum([e for e in l if e == 1]) })
         ans.columns = ans.columns.get_level_values(1)
-        ans = ans.rename(columns={"count"   : prefix+"_n",
-                                  "max"     : prefix+"_effort",
-                                  "<lambda>": prefix+"_correct"})
+        ans = ans.rename(columns={"count"   : prefix + "_n",
+                                  "max"     : prefix + "_effort",
+                                  "<lambda>": prefix + "_correct"})
 
 
+        if prefix == "pre":
+            ans[prefix + "_effort"] = students["timestep"].max() #
+        else:
+            ans[prefix+ "_effort"] += - 1
 
         # Add NaNs back:
         for c in ans.columns:
-            ans.loc[ ans[c] == -1 , c ] = float("nan")
+            ans.loc[ ans[c] <= -1 , c ] = float("nan")
 
         return ans
 
