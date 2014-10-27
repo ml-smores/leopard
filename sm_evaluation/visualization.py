@@ -56,7 +56,7 @@ class WhiteVisualization():
 
     # def graph_path(self, white_objs, threshold=None):
     def plot_by_practice(self, white_objs, threshold=None):
-        ''' white_objs is a list of white objects... it may only have a single object
+        ''' white_objs is a list of sm_evaluation objects... it may only have a single object
            x=kc, y=practice, dot size=students, dot color=score
            this should save the image to file
         '''
@@ -120,7 +120,7 @@ class WhiteVisualization():
         x = white_list
         y = auc_list
         print x, y
-        df = pd.DataFrame({"kcs":kc_list, "white":white_list, "auc":auc_list})
+        df = pd.DataFrame({"kcs":kc_list, "sm_evaluation":white_list, "auc":auc_list})
         df.to_csv("example_data/synthetic_data_white_vs_auc.csv")
 
         correlation, correlation_pval = stats.spearmanr(x, y)

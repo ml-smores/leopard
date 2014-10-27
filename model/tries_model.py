@@ -2,7 +2,7 @@ __author__ = 'hy'
 
 import numpy as np
 import pandas as pd
-from white.common import *
+from sm_evaluation.common import *
 
 
 class TriesModel():

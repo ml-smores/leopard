@@ -1,20 +1,22 @@
 __author__ = 'ugonzjo'
 
-from white.evaluation import *
-from white.visualization import *
-from white.policies import *
+from sm_evaluation.white import White
+#from sm_evaluation.visualization import *
+from sm_evaluation.policies import SingleKCPolicy
 import pandas as pd
 
 
 # def main(filenames="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#tom_predictions_chapter1.tsv #tdx_1.3.2.61_16.csv
-def main(filenames="example_data/example1.csv", plot=True):
+def main(filenames="example_data/example1.csv", threshold=0.6, plot=True):
     whites = []
     for input in filenames.split(","):
         print input
         df = pd.read_csv(input, sep=("\t" if "tsv" in input else ","))
 
-        policy = SingleKCPolicy(df)
-        policy.split_kc(0.4)
+        policy = SingleKCPolicy(df, threshold=threshold)
+        e = White(policy)
+        e.evaluate()
+
 
 
 
