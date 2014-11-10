@@ -1,25 +1,21 @@
 __author__ = 'ugonzjo'
 
 from sm_evaluation.white import White
-#from sm_evaluation.visualization import *
 from sm_evaluation.policies import SingleKCPolicy
 import pandas as pd
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
-
-# def main(filenames="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#tom_predictions_chapter1.tsv #tdx_1.3.2.61_16.csv
-def main(filenames="example_data/example1.csv", threshold=0.6, plot=True):
+def main(filenames="private_data/obj_predictions_chapter1.tsv", threshold=0.6, plot=True): #example_data/example1.csv"
     whites = []
     for input in filenames.split(","):
         print input
         df = pd.read_csv(input, sep=("\t" if "tsv" in input else ","))
+        print "Datapoints:", len(df)
         policy = SingleKCPolicy(df, threshold=threshold)
         e = White(policy)
         print e
-
-
 
 
         #if plot:

@@ -13,7 +13,7 @@ class White:
 
 
     def __repr__(self):
-        ans = ""
+        ans = "{:.2f}  {:.2f}\n".format(self.score_students, self.effort)
         for k, v in self.detail.items():
             score_student = v["score_student"]["mean"]
             effort =  v["effort"]["mean"]
