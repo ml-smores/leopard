@@ -10,15 +10,14 @@ pd.set_option('display.width', 1000)
 
 
 # def main(filenames="input/df_2.1.119.tsv", sep="\t"):#df_2.4.278.tsv"):#tom_predictions_chapter1.tsv #tdx_1.3.2.61_16.csv
-def main(filenames="example_data/tom_predictions_chapter2.tsv", threshold=0.6, plot=True):
+def main(filenames="example_data/example1.csv", threshold=0.6, plot=True):
     whites = []
     for input in filenames.split(","):
         print input
         df = pd.read_csv(input, sep=("\t" if "tsv" in input else ","))
-        #df = df[df["kc"] == "2_1_difficult"] # .head(10000)
         policy = SingleKCPolicy(df, threshold=threshold)
         e = White(policy)
-        print e.evaluate()
+        print e
 
 
 

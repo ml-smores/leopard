@@ -17,6 +17,7 @@ class SingleKCPolicy (WhitePolicy):
         self.df = df
         self.threshold = threshold
 
+
     def simulate(self):
         df_kcs = self.df.groupby("kc")
 
@@ -30,20 +31,16 @@ class SingleKCPolicy (WhitePolicy):
             # Get boundary:
             decisions =  self.get_boundaries(df_kc, self.threshold)
             decisions = df_kc.merge(decisions, on=["student"], how="left")
-
-            # split
             mastered_rows = (decisions["timestep"]  >=  decisions["boundary"])
-            mastered   = decisions[  mastered_rows ]
-            unmastered = decisions[ ~ mastered_rows ]  # this takes account of NaN
+            decisions["mastered"] = mastered_rows
 
             # calculate:
-            pre = self.get_student_stats(unmastered, "pre")
-            pos = self.get_student_stats(mastered, "pos")
+            pre = self.get_student_stats(decisions, False)
+            pos = self.get_student_stats(decisions, True)
 
-            #join previously split:
-            kc = pre.join(pos, how="outer")
+            kc =  pre.join(pos, how="outer", rsuffix="_pos", lsuffix="_pre")
             kc["id"] = g
-            kc["mastered"] = ~ kc["pos_effort"].isnull()
+            kc["mastered"] = ~ kc["effort_pos"].isnull()
 
             ans.append(kc)
 
@@ -54,7 +51,7 @@ class SingleKCPolicy (WhitePolicy):
 
     def get_boundaries(self, df_kc, threshold):
         df_filtered = df_kc[ df_kc["predicted_outcome"]  >= threshold  ]
-        df_filtered["boundary"] = df_filtered["timestep"]
+        df_filtered["boundary"] = df_filtered["timestep"] - 1
 
         df_students = df_filtered.groupby("student")
         df_boundaries = df_students.first().reset_index()
@@ -65,25 +62,26 @@ class SingleKCPolicy (WhitePolicy):
         return  df_boundaries[ ["student", "boundary"] ]
 
 
-    def get_student_stats(self, df, prefix):
-        df = df.copy()
+    def get_student_stats(self, df, mastery):
+        #Filter data.  Make a copy so to not get warnings....
+        df = df[ df["mastered"] == mastery ].copy()
+
         # Unfortunately, pandas' groupby doesn't work on NaN values.
         # Remove NaNs:
-        df["boundary"] = df["boundary"].fillna(-1)
+        df.loc[:, "boundary"] = df["boundary"].fillna(-1)
 
         students = df.groupby("student")
 
         ans = students.agg({ "boundary" : ['count', 'max'], "outcome": lambda(l): np.sum([e for e in l if e == 1]) })
         ans.columns = ans.columns.get_level_values(1)
-        ans = ans.rename(columns={"count"   : prefix + "_n",
-                                  "max"     : prefix + "_effort",
-                                  "<lambda>": prefix + "_correct"})
+        ans = ans.rename(columns={"count"   :   "n",
+                                  "max"     :   "effort",
+                                  "<lambda>":   "correct"})
 
 
-        if prefix == "pre":
-            ans[prefix + "_effort"] = students["timestep"].max() #
-        else:
-            ans[prefix+ "_effort"] += - 1
+        if not mastery:
+            ans["effort"] = students["timestep"].max()+1 #
+
 
         # Add NaNs back:
         for c in ans.columns:
