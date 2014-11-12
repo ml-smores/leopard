@@ -22,10 +22,10 @@ class TriesModel():
             step = 1.0 / self.nb_correct
             print "To implement..."
             exit(-1)
-            df["pcorrect"] = df.prior_correct.apply(self.linear_predictor)
+            self.df["predicted_outcome"] = self.df.prior_correct.apply(self.linear_predictor)
         else:
-            self.df["pcorrect"] = self.df.prior_correct.apply(lambda x: 0 if x < self.nb_correct else 1)
-        self.df.to_csv("../example_data/obj_predictions_chapter1_tries_model.tsv", sep="\t")
+            self.df["predicted_outcome"] = self.df.prior_correct.apply(lambda x: 0 if x < self.nb_correct else 1)
+        return self.df
 
     def linear_predictor(self):
         #lambda x: 0 if x == 0 else (0.333 if x == 1 else (0.666 if x == 2 else 1))
@@ -35,7 +35,8 @@ class TriesModel():
 def main(filename="../example_data/obj_predictions_chapter1.tsv"):
     df = pd.read_csv(filename, sep=("\t" if "tsv" in filename else ","))
     t = TriesModel(df)
-    t.predict_proba()
+    df = t.predict_proba()
+    df.to_csv("".join(filename.split(".tsv")) + "_tries_model.tsv", sep="\t")
 
 
 

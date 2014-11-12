@@ -3,6 +3,7 @@ __author__ = 'ugonzjo'
 from matplotlib import pyplot as pl, pyplot, cm, colors
 from scipy import stats
 import pandas as pd
+from common import *
 
 
 class WhiteVisualization():
@@ -109,35 +110,47 @@ class WhiteVisualization():
 
 
     @staticmethod
-    def plot_auc_vs_white(white_objs, file):
+    def plot_auc_vs_white(white_objs, aucs, outfile):
         auc_list = []
-        white_list = []
+        score_students_list = []
+        effort_list = []
+        ratio_list = []
         kc_list = []
-        for white_obj in white_objs:
-            auc_list.append(white_obj.standard_metrics["auc"])
-            white_list.append(white_obj.ratio_all)
-            kc_list.append("_".join(white_obj.kcs))
-        x = white_list
-        y = auc_list
-        print x, y
-        df = pd.DataFrame({"kcs":kc_list, "sm_evaluation":white_list, "auc":auc_list})
-        df.to_csv("example_data/synthetic_data_white_vs_auc.csv")
+        for pos in range(len(white_objs)):
+            white_obj = white_objs[pos]
+            auc_list.append(aucs[pos])#white_obj.standard_metrics["auc"])
+            score_students_list.append(white_obj.score_students)#white_obj.ratio_all)
+            effort_list.append(white_obj.effort)
+            ratio_list.append(white_obj.ratio)
+            kc_list.append("_".join(white_obj.detail.keys()))#white_obj.kcs))
+        xs = [score_students_list, effort_list, ratio_list]
+        ys = [auc_list] * 3
+        titles = ["score", "effort", "ratio"]
 
-        correlation, correlation_pval = stats.spearmanr(x, y)
-        correlation_str = "Spearman correlation : {:4.2f}".format(correlation) + ", p-value:{:5.3f}".format(correlation_pval)
+        for pos in range(len(xs)):
+            x = xs[pos]
+            y = ys[pos]
+            title = titles[pos]
+            print pretty(x), pretty(y), "\n"
+            df = pd.DataFrame({"kcs":kc_list, title:x, "auc":y}) #"sm_evaluation":white_list
+            df.to_csv("example_data/synthetic_data_auc_vs_" + title + ".csv")
 
-        fig, ax = pl.subplots()
-        fig.subplots_adjust(bottom=0.15)
-        pl.scatter(x, y, s=20)#, label=correlation_str)
-        #pl.plot(x, y, linewidth=3, label=correlation_str)
-        #pl.legend(loc="upper right", prop={'size':15}) #ncol=4,
-        pl.title(correlation_str, fontsize=20)
-        pl.ylabel("AUC", fontsize=20)#ycolor
-        pl.xlabel("WHITE", fontsize=20)
-        pl.yticks(fontsize=18)
-        pl.xticks(fontsize=18)
-        pl.savefig(file)
-        pl.close(fig)
+            correlation, correlation_pval = stats.spearmanr(x, y)
+            correlation_str = "Spearman correlation : {:4.2f}".format(correlation) + ", p-value:{:5.3f}".format(correlation_pval)
+
+            fig, ax = pl.subplots()
+            fig.subplots_adjust(bottom=0.15)
+            pl.scatter(x, y, s=20)#, label=correlation_str)
+            #pl.plot(x, y, linewidth=3, label=correlation_str)
+            #pl.legend(loc="upper right", prop={'size':15}) #ncol=4,
+            pl.title(correlation_str, fontsize=20)
+            pl.ylabel("AUC", fontsize=20)#ycolor
+            pl.xlabel(title, fontsize=20)
+            pl.yticks(fontsize=18)
+            pl.xticks(fontsize=18)
+            pl.savefig(outfile.format(title))
+            pl.close(fig)
+
 
     def get_after_integral_lower_bound(self, thresholds, scores, practices, ratios=None, students=None):
         if self.white_obj.integral_lower_bound > 0.0:
