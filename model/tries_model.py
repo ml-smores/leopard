@@ -6,7 +6,7 @@ from sm_evaluation.common import *
 
 
 class TriesModel():
-    def __init__(self, df, nb_correct=3, type="binary"):
+    def __init__(self, df, nb_correct=3, type="linear"):
         '''
         type: "binary": predicts prob(correct) either 0 or 1
               "linear": predicts prob(correct) linearly by nb_correct'''
@@ -19,24 +19,23 @@ class TriesModel():
 
     def predict_proba(self):
         if self.type == "linear":
-            step = 1.0 / self.nb_correct
-            print "To implement..."
-            exit(-1)
-            self.df["predicted_outcome"] = self.df.prior_correct.apply(self.linear_predictor)
+            #step = 1.0 / self.nb_correct
+            #print "To implement..."
+            #exit(-1)
+            self.df["predicted_outcome"] = self.df.prior_correct.apply(lambda x: 0 if x == 0 else (0.333 if x == 1 else (0.666 if x == 2 else 1))) #self.linear_predictor)
         else:
             self.df["predicted_outcome"] = self.df.prior_correct.apply(lambda x: 0 if x < self.nb_correct else 1)
         return self.df
 
-    def linear_predictor(self):
-        #lambda x: 0 if x == 0 else (0.333 if x == 1 else (0.666 if x == 2 else 1))
-        pass
+    # def linear_predictor(self):
+    #     return (0 if x == 0 else (0.333 if x == 1 else (0.666 if x == 2 else 1)))
 
 
 def main(filename="../example_data/obj_predictions_chapter1.tsv"):
     df = pd.read_csv(filename, sep=("\t" if "tsv" in filename else ","))
     t = TriesModel(df)
     df = t.predict_proba()
-    df.to_csv("".join(filename.split(".tsv")) + "_tries_model.tsv", sep="\t")
+    df.to_csv("".join(filename.split(".tsv")) + "_tries_model_liner.tsv", sep="\t")
 
 
 
