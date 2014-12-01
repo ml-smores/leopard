@@ -100,31 +100,31 @@ def main(prefix="syn_"): #syn_ #obj_chapter1_
     outfile.write("chapter,score,effort,mean_mastery,mean_%mastery,auc,correct%\n")
     for chapter in chapters:
         print "chapter", chapter
-        #a_chapter_kcs = df_chapter_kc[df_chapter_kc["chapter"] == chapter].kc.unique().tolist()
-        # df_train_all = pd.DataFrame(columns=columns)
-        # df_test_all = pd.DataFrame(columns=columns)
-        # if not combine_train_dev:
-        #     df_dev_all = pd.DataFrame(columns=columns)
-        # for kc in a_chapter_kcs:
-        #     print kc
-        #     df_train, df_dev, df_test = get_data(kc)
-        #     df_train_all = pd.concat([df_train_all, df_train])
-        #     df_test_all = pd.concat([df_test_all, df_test])
-        #     if combine_train_dev:
-        #         df_train_all = pd.concat([df_train_all, df_dev])
-        #     else:
-        #         df_dev_all = pd.concat([df_dev_all, df_dev])
-        # print "chapter", chapter, "#datapoints: train:", len(df_train_all), ", test:", len(df_test_all),
-        # if not combine_train_dev:
-        #     print ", dev:", len(df_dev_all)
-        # else:
-        #     print ""
-        # #white_obj_chapter1_train0.txt
+        a_chapter_kcs = df_chapter_kc[df_chapter_kc["chapter"] == chapter].kc.unique().tolist()
+        df_train_all = pd.DataFrame(columns=columns)
+        df_test_all = pd.DataFrame(columns=columns)
+        if not combine_train_dev:
+            df_dev_all = pd.DataFrame(columns=columns)
+        for kc in a_chapter_kcs:
+            print kc
+            df_train, df_dev, df_test = get_data(kc)
+            df_train_all = pd.concat([df_train_all, df_train])
+            df_test_all = pd.concat([df_test_all, df_test])
+            if combine_train_dev:
+                df_train_all = pd.concat([df_train_all, df_dev])
+            else:
+                df_dev_all = pd.concat([df_dev_all, df_dev])
+        print "chapter", chapter, "#datapoints: train:", len(df_train_all), ", test:", len(df_test_all),
+        if not combine_train_dev:
+            print ", dev:", len(df_dev_all)
+        else:
+            print ""
+
         file_prefix = prefix + "chapter" + str(chapter) + "_"
-        # df_train_all.to_csv(out_path + file_prefix + "train0.txt", index=False, header=False, sep="\t", columns=columns)
-        # df_test_all.to_csv(out_path + file_prefix + "test0.txt", index=False, header=False, sep="\t", columns=columns)#, columns=columns)
-        # if not combine_train_dev:
-        #     df_dev_all.to_csv(out_path + file_prefix + "dev0.txt", index=False, header=False, sep="\t", columns=columns)#, columns=columns)
+        df_train_all.to_csv(out_path + file_prefix + "train0.txt", index=False, header=False, sep="\t", columns=columns)
+        df_test_all.to_csv(out_path + file_prefix + "test0.txt", index=False, header=False, sep="\t", columns=columns)#, columns=columns)
+        if not combine_train_dev:
+            df_dev_all.to_csv(out_path + file_prefix + "dev0.txt", index=False, header=False, sep="\t", columns=columns)#, columns=columns)
 
         # ./trainhmm: cannot execute binary file: Exec format error
         run_os_system_command(out_path + "trainhmm -s 1.1 -m 1 -p 1 " + out_path + file_prefix + "train0.txt " + out_path + file_prefix + "model.txt " + out_path + file_prefix + "predict_train.txt")
@@ -140,20 +140,9 @@ def main(prefix="syn_"): #syn_ #obj_chapter1_
         df_test["predicted_outcome"] = df_predict["predicted_outcome"]
         df_test.to_csv(out_path + file_prefix + "kt.tsv", sep="\t")
 
-        #run_os_system_command("cd " + test_white_path)
-        #run_os_system_command("export PYTHONPATH=.:../:../../")
-        # encoding = os.sys.getfilesystemencoding()
-        #print "current path:", os.path.dirname(unicode(__file__, encoding))
-        #run_os_system_command("python test_white.py filenames=" + out_path + file_prefix + "kt.tsv")
-
-        #infile = out_path + file_prefix + "kt.tsv"
-        #chapter_white = {}
-        #df_all = pd.read_csv(infile, sep="\t")
         df = df_test
         print "df from formated pred file:\n", df.head()
         threshold = 0.6
-        #a_chapter_kcs = df_chapter_kc[df_chapter_kc["chapter"] == chapter].kc.unique().tolist()
-        #df = df_all[df_all["kc"].isin(a_chapter_kcs)]
         print "Datapoints:", len(df), "#kcs:", df.kc.nunique(), "threshold:", threshold, "#students:", df.student.nunique()
         policy = SingleKCPolicy(df, threshold=threshold)
         e = White(policy)
