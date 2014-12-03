@@ -28,19 +28,28 @@ class WhiteVisualization():
 
 
     @staticmethod
-    def plot_auc_vs_white(white_objs, aucs, outfile):
-        auc_list = []
-        score_students_list = []
-        effort_list = []
-        #ratio_list = []
-        kc_list = []
-        for pos in range(len(white_objs)):
-            white_obj = white_objs[pos]
-            auc_list.append(aucs[pos])#white_obj.standard_metrics["auc"])
-            score_students_list.append(white_obj.score_students)#white_obj.ratio_all)
-            effort_list.append(white_obj.effort)
-            #ratio_list.append(white_obj.ratio)
-            kc_list.append("_".join(white_obj.detail.keys()))#white_obj.kcs))
+    def plot_auc_vs_white(white_objs, aucs, outfile, infile="", ylim=None):
+        if white_objs is not None and aucs is not None:
+            auc_list = []
+            score_students_list = []
+            effort_list = []
+            #ratio_list = []
+            kc_list = []
+            for pos in range(len(white_objs)):
+                white_obj = white_objs[pos]
+                auc_list.append(aucs[pos])#white_obj.standard_metrics["auc"])
+                score_students_list.append(white_obj.score_students)#white_obj.ratio_all)
+                effort_list.append(white_obj.effort)
+                #ratio_list.append(white_obj.ratio)
+                kc_list.append("_".join(white_obj.detail.keys()))#white_obj.kcs))
+        else:
+            df = pd.read_csv(infile)
+            if "score" in df.columns:
+                score_students_list = df["score"].tolist()
+            else:
+                score_students_list = df["score_student"].tolist()
+            effort_list = df["effort"].tolist()
+            auc_list = df["auc"].tolist()
         xs = [score_students_list, effort_list]#, ratio_list]
         ys = [auc_list] * 2
         titles = ["score", "effort"]#, "ratio"]
@@ -50,24 +59,13 @@ class WhiteVisualization():
             y = ys[pos]
             title = titles[pos]
             #print pretty(x), pretty(y), "\n"
-            df = pd.DataFrame({"kcs":kc_list, title:x, "auc":y}) #"sm_evaluation":white_list
-            df.to_csv("../example_data/synthetic_data_auc_vs_" + title + ".csv")
 
             correlation, correlation_pval = stats.spearmanr(x, y)
             correlation_str = "Spearman correlation : {:4.2f}".format(correlation) + ", p-value:{:5.3f}".format(correlation_pval)
 
-            fig, ax = pl.subplots()
-            fig.subplots_adjust(bottom=0.15)
-            pl.scatter(x, y, s=20)#, label=correlation_str)
-            #pl.plot(x, y, linewidth=3, label=correlation_str)
-            #pl.legend(loc="upper right", prop={'size':15}) #ncol=4,
-            pl.title(correlation_str, fontsize=20)
-            pl.ylabel("AUC", fontsize=20)#ycolor
-            pl.xlabel(title, fontsize=20)
-            pl.yticks(fontsize=18)
-            pl.xticks(fontsize=18)
-            pl.savefig(outfile.format(title))
-            pl.close(fig)
+            plot_scatterplot(x, y, title, "AUC",
+                      file=outfile.format(title),
+                      title="Spearman correlation=" + pretty(correlation) + " (p-value=" + pretty(correlation_pval) + ")", ylim=ylim)
 
     @staticmethod
     def plot_histogram(white_objs, aucs, outfile):
@@ -161,7 +159,7 @@ class WhiteVisualization():
     @staticmethod
     def plot_component_relation(kc, x, y, figure_path, xlabel, ylabel,
                                 xlim=None, ylim=None, linewidth=3, ycolor="black", label=None, dotsize=20,
-                                figure=None, axis=None, nb_students=None, perkc_stu_thd = 30, nb_kcs=None):
+                                figure=None, axis=None, nb_students=None, perkc_stu_thd = 30, nb_kcs=None, tick_size=20, label_size=25):
         if figure is None:
             fig, ax = pl.subplots()
         else:
@@ -171,16 +169,18 @@ class WhiteVisualization():
             x = [x[i] for i, v in enumerate(nb_students) if v > 0]#30 #250
             y = [y[i] for i, v in enumerate(nb_students) if v > 0]#30 #250
             dot_color = [ycolor] * len(y)
+            dotsize = [dotsize] * len(y)
             if nb_kcs is not None:
                 perkc_stu_thd *= nb_kcs
             for pos in range(len(y)):
                 if nb_students[pos] < perkc_stu_thd:
                     dot_color[pos] = "lightgrey"
+                    dotsize[pos] = 0.3 * dotsize[pos]
             #todo: add sizes correspond to #students
         fig.subplots_adjust(left=0.15, bottom=0.15)
 
         if dot_color is not None:
-            pl.scatter(x, y, color=dot_color, s=dotsize)
+            pl.scatter(x, y, color=dot_color, s=dotsize, alpha = 0.6)
         else:
             pl.scatter(x, y, s=dotsize)
         # if label is None:
@@ -189,14 +189,20 @@ class WhiteVisualization():
         #     pl.step(x, y, color=dot_color, linewidth=linewidth, label=label)
         #     pl.legend(loc="lower right", prop={'size':9}) #ncol=4,
 
-        pl.ylabel(ylabel, fontsize=20)#ycolor
-        pl.xlabel(xlabel, fontsize=20)
-        pl.yticks(fontsize=18)
-        pl.xticks(fontsize=18)
-        if ylim is not None:
-            pl.ylim(ylim)
+        pl.ylabel(ylabel, fontsize=label_size)#ycolor
+        pl.xlabel(xlabel, fontsize=label_size)
+        pl.yticks(fontsize=tick_size)
+        pl.xticks(fontsize=tick_size, rotation=30)
+
         if xlim is not None:
             pl.xlim(xlim)
+        elif xlabel == "effort":
+            pl.xlim([-1, max(x)+1])
+        if ylim is not None:
+            pl.ylim(ylim)
+        elif ylabel == "score":
+            pl.ylim([min(y)-0.001, max(y)+0.002])
+
         if figure is None:
             out_file = figure_path + (ylabel.replace("/", "_over_") + "_" + xlabel + "_{}.pdf").format(kc)
             print "outputting to ", out_file
@@ -259,3 +265,66 @@ class WhiteVisualization():
     #         if students is not None:
     #             students = students[threshold_pos:]
     #     return thresholds, scores, practices, ratios, students
+
+
+def plot_histogram_from_file():
+    outfile = "../images/" + exp_path + "synthetic_data_histogram_{}.pdf"
+    df = pd.read_csv("../example_data/" + exp_path + "synthetic_data_auc_vs_score.csv")
+    auc_list = df["auc"].tolist()
+    score_students_list = df["score"].tolist()
+    effort_list = df["effort"].tolist()
+    xs = [score_students_list, effort_list, auc_list]
+    titles = ["score", "effort", "auc"]#, "ratio"]
+
+    for pos in range(len(xs)):
+        list_values = xs[pos]
+        title = titles[pos]
+
+        print "*** Plotting histagram for", title, " *** "
+        fig, ax = pl.subplots()
+        max_ = max(list_values)
+        min_ = min(list_values)
+        nb_bins = 10
+        bin_size = ( max_ - min_ ) / nb_bins
+        print "max=", max_, "\tmin=", min_, "\t#bins=", nb_bins, "\tbin_size=", bin_size
+
+        if title == "auc" or title == "score":
+            min_ = round(min_, 2)
+            max_ = round(max_, 2)
+            bin_size = round(bin_size, 2)
+        else:
+            min_ = int(math.floor(min_))
+            max_ = int(math.ceil(max_))
+            bin_size = int(bin_size)
+
+        print "max=", max_, "\tmin=", min_, "\t#bins=", nb_bins, "\tbin_size=", bin_size
+        pl.xlim([min_, max_])
+        fig.subplots_adjust(bottom=0.2)
+        bins=np.arange(min_, max_+bin_size*1.1, bin_size)
+        ax.hist(list_values, bins=bins)  #, align='left')
+        pl.xticks(bins, rotation=30)#, fontsize=xtick_size)
+        #pl.title(title, fontsize=18)
+        pl.xlabel(title, fontsize=18)
+        pl.ylabel("#datasets", fontsize=18)
+        pl.savefig(outfile.format(title))
+        pl.close("all")
+
+
+def plot_scatterplot(x, y, xlabel, ylabel, file, title, ylim=None, label_size = 25, tick_size=20):
+    fig, ax = pl.subplots()
+    pl.scatter(x, y, color='black',alpha=0.6)#, label=legend)
+    #pl.legend(loc='upper left', prop={'size':10})
+    fig.subplots_adjust(bottom=0.18, left=0.15)
+    pl.ylabel(ylabel, fontsize=label_size)#ycolor
+    pl.xlabel(xlabel, fontsize=label_size)
+    pl.title(title, fontsize=label_size)
+    pl.xticks(fontsize=tick_size, rotation=30)
+    pl.yticks(fontsize=tick_size)
+    if ylim is not None:
+        pl.ylim(ylim)
+
+    # if not os.path.isdir(file):
+    #     os.makedirs(file)
+    pl.savefig(file)
+    pl.close(fig)
+

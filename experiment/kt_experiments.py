@@ -16,9 +16,9 @@ pd.set_option('display.width', 1000)
 
 
 #out_path = "/data/research/white/kt/"
-out_path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/CodingProjects/BKT_Michael/standard-bkt-public-standard-bkt/white_data/" #"/Users/hy/inf/Study/CS/Projects_Codes_Data/CodingProjects/github/fast/input/"
+out_path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/CodingProjects/BKT_Michael/standard-bkt-public-standard-bkt/mibkt_white_data/20kc_10prac_withlearning_GS0_500stu/" #"/Users/hy/inf/Study/CS/Projects_Codes_Data/CodingProjects/github/fast/input/"
 #in_path = "/data/research/white/adaptivelearningservice/als/pfa/intermediate/"
-in_path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/Data/Data_white/synthetic_data/data_20kc_perchapter/"
+in_path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/CodingProjects/BKT_Michael/standard-bkt-public-standard-bkt/mibkt_white_data/20kc_10prac_withlearning_GS0_500stu/"
 format = "mibkt"
 columns = []
 combine_train_dev = True
@@ -74,8 +74,8 @@ def get_data(kc_id):
 
 
 def get_chapters_kcs(path):
-    df_chapter_kc = pd.read_csv(path + "identifiers_obj.txt", header=None)
-    df_chapter_kc = df_chapter_kc.rename(columns={0:"chapter", 1:"kc"})
+    df_chapter_kc = pd.read_csv(path + "identifiers_obj.txt")#, header=None)
+    #df_chapter_kc = df_chapter_kc.rename(columns={0:"chapter", 1:"kc"})
     df_chapter_kc = df_chapter_kc.sort(columns=["kc"])
     kcs = df_chapter_kc["kc"].tolist()
     chapters = df_chapter_kc["chapter"].unique().tolist()
@@ -87,7 +87,7 @@ def run_os_system_command(command):
     print "command: ", command
     os.system(command)
 
-def main(prefix="syn_"): #syn_ #obj_chapter1_
+def main(prefix="syn_", generate_kt_input=False, run_kt=True, predict_on_train=True): #syn_ #obj_chapter1_
     global columns
     if format == "fast":
         columns = ["user_id", "kc", "outcome"]
@@ -95,63 +95,73 @@ def main(prefix="syn_"): #syn_ #obj_chapter1_
         columns = ["outcome", "user_id", "xml_qno",  "kc"]
     kcs, chapters, df_chapter_kc = get_chapters_kcs(in_path)
     print chapters
-    chapter_white = {}
-    outfile = open(out_path + prefix + "white.csv", "w")
-    outfile.write("chapter,score,effort,mean_mastery,mean_%mastery,auc,correct%\n")
+    if run_kt:
+        chapter_white = {}
+        outfile = open(out_path + prefix + "white.csv", "w")
+        outfile.write("chapter,score,effort,mean_mastery,mean_%mastery,auc,correct%\n")
     for chapter in chapters:
         print "chapter", chapter
-        a_chapter_kcs = df_chapter_kc[df_chapter_kc["chapter"] == chapter].kc.unique().tolist()
-        df_train_all = pd.DataFrame(columns=columns)
-        df_test_all = pd.DataFrame(columns=columns)
-        if not combine_train_dev:
-            df_dev_all = pd.DataFrame(columns=columns)
-        for kc in a_chapter_kcs:
-            print kc
-            df_train, df_dev, df_test = get_data(kc)
-            df_train_all = pd.concat([df_train_all, df_train])
-            df_test_all = pd.concat([df_test_all, df_test])
-            if combine_train_dev:
-                df_train_all = pd.concat([df_train_all, df_dev])
-            else:
-                df_dev_all = pd.concat([df_dev_all, df_dev])
-        print "chapter", chapter, "#datapoints: train:", len(df_train_all), ", test:", len(df_test_all),
-        if not combine_train_dev:
-            print ", dev:", len(df_dev_all)
-        else:
-            print ""
-
         file_prefix = prefix + "chapter" + str(chapter) + "_"
-        df_train_all.to_csv(out_path + file_prefix + "train0.txt", index=False, header=False, sep="\t", columns=columns)
-        df_test_all.to_csv(out_path + file_prefix + "test0.txt", index=False, header=False, sep="\t", columns=columns)#, columns=columns)
-        if not combine_train_dev:
-            df_dev_all.to_csv(out_path + file_prefix + "dev0.txt", index=False, header=False, sep="\t", columns=columns)#, columns=columns)
 
-        # ./trainhmm: cannot execute binary file: Exec format error
-        run_os_system_command(out_path + "trainhmm -s 1.1 -m 1 -p 1 " + out_path + file_prefix + "train0.txt " + out_path + file_prefix + "model.txt " + out_path + file_prefix + "predict_train.txt")
-        run_os_system_command(out_path + "predicthmm -p 1 " + out_path + file_prefix + "test0.txt " +
-                              out_path + file_prefix + "model.txt " +
-                              out_path + file_prefix + "predict_test.txt")
+        if generate_kt_input:
+            a_chapter_kcs = df_chapter_kc[df_chapter_kc["chapter"] == chapter].kc.unique().tolist()
+            df_train_all = pd.DataFrame(columns=columns)
+            df_test_all = pd.DataFrame(columns=columns)
+            if not combine_train_dev:
+                df_dev_all = pd.DataFrame(columns=columns)
+            for kc in a_chapter_kcs:
+                print kc
+                df_train, df_dev, df_test = get_data(kc)
+                df_train_all = pd.concat([df_train_all, df_train])
+                df_test_all = pd.concat([df_test_all, df_test])
+                if combine_train_dev:
+                    df_train_all = pd.concat([df_train_all, df_dev])
+                else:
+                    df_dev_all = pd.concat([df_dev_all, df_dev])
+            print "chapter", chapter, "#datapoints: train:", len(df_train_all), ", test:", len(df_test_all),
+            if not combine_train_dev:
+                print ", dev:", len(df_dev_all)
+            else:
+                print ""
 
-        df_predict = pd.read_csv(out_path + file_prefix + "predict_test.txt", sep="\t", header=None)
-        df_predict = df_predict.rename(columns={0:"predicted_outcome", 1:"pwrong"})
-        df_test = pd.read_csv(out_path + file_prefix + "test0.txt", sep="\t", header=None)
-        df_test = df_test.rename(columns={0:"outcome", 1:"student", 3:"kc", 2:"problem"})
-        df_test["outcome"] = df_test["outcome"].apply(lambda x: 1 if x== 1 else 0)
-        df_test["predicted_outcome"] = df_predict["predicted_outcome"]
-        df_test.to_csv(out_path + file_prefix + "kt.tsv", sep="\t")
+            df_train_all.to_csv(out_path + file_prefix + "train0.txt", index=False, header=False, sep="\t", columns=columns)
+            df_test_all.to_csv(out_path + file_prefix + "test0.txt", index=False, header=False, sep="\t", columns=columns)#, columns=columns)
+            if not combine_train_dev:
+                df_dev_all.to_csv(out_path + file_prefix + "dev0.txt", index=False, header=False, sep="\t", columns=columns)#, columns=columns)
 
-        df = df_test
-        print "df from formated pred file:\n", df.head()
-        threshold = 0.6
-        print "Datapoints:", len(df), "#kcs:", df.kc.nunique(), "threshold:", threshold, "#students:", df.student.nunique()
-        policy = SingleKCPolicy(df, threshold=threshold)
-        e = White(policy)
-        print e
-        auc, pct_correct = compute_standard_metrics(df)
-        print "auc=", pretty(auc), "pct_correct=", pretty(pct_correct)
-        chapter_white[chapter] = [e.score_students, e.effort, e.mastery, e.mastery_pct, auc, pct_correct]
-        outfile.write(str(chapter)+","+",".join([str(e.score_students), str(e.effort), str(e.mastery), str(e.mastery_pct), str(auc), str(pct_correct)]) + "\n")
-    print pretty(chapter_white)
+        if run_kt:
+            # ./trainhmm: cannot execute binary file: Exec format error
+            run_os_system_command(out_path + "trainhmm -s 1.1 -m 1 -p 1 " + out_path + file_prefix + "train0.txt " + out_path + file_prefix + "model.txt " + out_path + file_prefix + "predict_train.txt")
+            run_os_system_command(out_path + "predicthmm -p 1 " + out_path + file_prefix + "test0.txt " +
+                                  out_path + file_prefix + "model.txt " +
+                                  out_path + file_prefix + "predict_test.txt")
+
+            if predict_on_train:
+                df_predict = pd.read_csv(out_path + file_prefix + "predict_train.txt", sep="\t", header=None)
+                df_test = pd.read_csv(out_path + file_prefix + "train0.txt", sep="\t", header=None)
+            else:
+                df_predict = pd.read_csv(out_path + file_prefix + "predict_test.txt", sep="\t", header=None)
+                df_test = pd.read_csv(out_path + file_prefix + "test0.txt", sep="\t", header=None)
+
+            df_predict = df_predict.rename(columns={0:"predicted_outcome", 1:"pwrong"})
+            df_test = df_test.rename(columns={0:"outcome", 1:"student", 3:"kc", 2:"problem"})
+            df_test["outcome"] = df_test["outcome"].apply(lambda x: 1 if x== 1 else 0)
+            df_test["predicted_outcome"] = df_predict["predicted_outcome"]
+            df_test.to_csv(out_path + file_prefix + "kt.tsv", sep="\t")
+
+            df = df_test
+            print "df from formated pred file:\n", df.head()
+            threshold = 0.6
+            print "Datapoints:", len(df), "#kcs:", df.kc.nunique(), "threshold:", threshold, "#students:", df.student.nunique()
+            policy = SingleKCPolicy(df, threshold=threshold)
+            e = White(policy)
+            print e
+            auc, pct_correct, accuracy, fmeasure, log_loss,  rmse, r2 = compute_standard_metrics(df)
+            print "auc=", pretty(auc), "pct_correct=", pretty(pct_correct)
+            chapter_white[chapter] = [e.score_students, e.effort, e.mastery, e.mastery_pct, auc, pct_correct]
+            outfile.write(str(chapter)+","+",".join([str(e.score_students), str(e.effort), str(e.mastery), str(e.mastery_pct), str(auc), str(pct_correct)]) + "\n")
+    if run_kt:
+        print pretty(chapter_white)
     print "Done"
 
 

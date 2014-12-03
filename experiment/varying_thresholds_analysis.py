@@ -11,8 +11,8 @@ pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
-root_path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/Data/Data_white/synthetic_data/"
-exp_path = "data_20kc_perchapter_with_learning/"
+root_path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/Data/Data_white/synthetic_data/"#synthetic_data/" #real_data/"
+exp_path = "20kc_20prac_withlearning_g0.6s0.4_2500stu/"#"20kc_10prac_withlearning_2500stu/"
 
 #root_path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/CodingProjects/github/white/example_data/"
 #exp_path = ""
@@ -42,80 +42,87 @@ def get_data(filenames):
     return dfs, names
 
 #private_data
-def main(filenames="../example_data/obj_predictions_chapter1.tsv", plot=True):
-    dfs, names = get_synthetic_data_results(root_path + exp_path)
-    #dfs, names = get_data(filenames)
-    #df_whites = pd.DataFrame()
+def main(prefix = "obj_predictions_chapter", synthetic_data=True, plot=True, get_whites=False):
+    if synthetic_data:
+        dfs, names = get_synthetic_data_results(root_path + exp_path)
+        prefix = ""
+    else:
+        dfs = [1]
+        names = [1]
+    #for chapter in [1]:
     for pos in range(len(dfs)):
-    #for chapter in range(100, 600):
-        df = dfs[pos]
         chapter = names[pos] #chapters
-        name = chapter
-        df = df.rename(columns={'pcorrect': 'predicted_outcome'})
-        print name, "Datapoints:", len(df), "kcs:", df.kc.nunique(), "#stus:", df.student.nunique()
-        output = root_path + exp_path + name + "_white_varying_theshold.csv"#"".join(input.split(".tsv"))+ "_white_varying_theshold.csv"
-        file = open(output, "w")
-        file.write("threshold,score,effort,mean_mastery,mean_mastery_pct\n")
+        output = root_path + exp_path + prefix + str(chapter) + "_white_varying_theshold.csv"#"".join(input.split(".tsv"))+ "_white_varying_theshold.csv"
+        print output
+        if get_whites:
+            df = dfs[pos]
+            df = df.rename(columns={'pcorrect': 'predicted_outcome'})
+            print chapter, "Datapoints:", len(df), "kcs:", df.kc.nunique(), "#stus:", df.student.nunique()
+            file = open(output, "w")
+            file.write("threshold,score,effort,mean_mastery,mean_mastery_pct\n")
 
-        print "Getting per kc's white varying thresholds..."
-        kc_thresholds = {}
-        kc_score_students = {}
-        kc_effort = {}
-        kc_mastery = {}
-        kc_mastery_pct = {}
-        for kc in df["kc"].unique():
-            df_kc = df[df["kc"] == kc]
-            thresholds = WhitePolicy.get_thresholds(df_kc)
-            kc_thresholds[kc] = thresholds
-            kc_score_students[kc] = []
-            kc_effort[kc] = []
-            kc_mastery[kc] = []
-            kc_mastery_pct[kc] = []
-            for threshold in thresholds:
-                e = White(SingleKCPolicy(df_kc, threshold=threshold))
-                print pretty(threshold), ":", e
-                kc_score_students[kc].append(e.score_students)
-                kc_effort[kc].append(e.effort)
-                kc_mastery[kc].append(e.mastery)
-                kc_mastery_pct[kc].append(e.mastery_pct)
-
-        thresholds = WhitePolicy.get_thresholds(df)
-        print "\nGetting all kcs' threshold, #thresholds = ", len(thresholds)
-        score_students_per_thd = []
-        effort_per_thd = []
-        mastery_per_thd = []
-        mastery_pct_per_thd = []
-        for threshold in thresholds:
-            score_student = 0.0
-            effort = 0.0
-            mastery = 0.0
-            mastery_pct = 0.0
+            print "Getting per kc's white varying thresholds..."
+            kc_thresholds = {}
+            kc_score_students = {}
+            kc_effort = {}
+            kc_mastery = {}
+            kc_mastery_pct = {}
             for kc in df["kc"].unique():
-                threshold_pos = next(i for i, v in enumerate(kc_thresholds[kc]) if v >= threshold)
-                score_student += kc_score_students[kc][threshold_pos] #list or scalar
-                effort += kc_effort[kc][threshold_pos] #list or scalar
-                mastery += kc_mastery[kc][threshold_pos]
-                mastery_pct += kc_mastery_pct[kc][threshold_pos]
-            score_student = score_student / (1.0 * df["kc"].nunique())
-            mastery = mastery / (1.0 * df["kc"].nunique())
-            mastery_pct = mastery_pct / (1.0 * df["kc"].nunique())
-            score_students_per_thd.append(score_student)
-            effort_per_thd.append(effort)
-            mastery_per_thd.append(mastery)
-            mastery_pct_per_thd.append(mastery_pct)
+                df_kc = df[df["kc"] == kc]
+                thresholds = WhitePolicy.get_thresholds(df_kc)
+                kc_thresholds[kc] = thresholds
+                kc_score_students[kc] = []
+                kc_effort[kc] = []
+                kc_mastery[kc] = []
+                kc_mastery_pct[kc] = []
+                for threshold in thresholds:
+                    e = White(SingleKCPolicy(df_kc, threshold=threshold))
+                    print pretty(threshold), ":", e
+                    kc_score_students[kc].append(e.score_students)
+                    kc_effort[kc].append(e.effort)
+                    kc_mastery[kc].append(e.mastery)
+                    kc_mastery_pct[kc].append(e.mastery_pct)
 
-            print "threshold: ", pretty(threshold), "overall: score:", pretty(score_student), " effort:", pretty(effort)," mean #stu_mastered:", pretty(mastery)," mean %stu_mastered:", pretty(mastery_pct)
-            file.write(",".join([str(threshold), str(score_student), str(effort), str(mastery), str(mastery_pct)]) + "\n")
-        file.close()
-        df_white = pd.DataFrame({"chapter":name, "threshold":thresholds, "score_student":score_students_per_thd, "effort":effort_per_thd, "mean_mastery":mastery_per_thd, "mean_mastery_pct":mastery_pct_per_thd})
-        df_white.to_csv(output)
-        #df_whites = pd.concat([df_whites, df_white])
-        #df_whites.to_csv(root_path + exp_path + "chapter" + str(chapter) + "_white_varying_theshold.csv")
-        #output = root_path + exp_path + "chapter" + str(chapter) + "_white_varying_theshold.csv"
+            thresholds = WhitePolicy.get_thresholds(df)
+            print "\nGetting all kcs' threshold, #thresholds = ", len(thresholds)
+            score_students_per_thd = []
+            effort_per_thd = []
+            mastery_per_thd = []
+            mastery_pct_per_thd = []
+            for threshold in thresholds:
+                score_student = 0.0
+                effort = 0.0
+                mastery = 0.0
+                mastery_pct = 0.0
+                for kc in df["kc"].unique():
+                    threshold_pos = next(i for i, v in enumerate(kc_thresholds[kc]) if v >= threshold)
+                    score_student += kc_score_students[kc][threshold_pos] #list or scalar
+                    effort += kc_effort[kc][threshold_pos] #list or scalar
+                    mastery += kc_mastery[kc][threshold_pos]
+                    mastery_pct += kc_mastery_pct[kc][threshold_pos]
+                score_student = score_student / (1.0 * df["kc"].nunique())
+                mastery = mastery / (1.0 * df["kc"].nunique())
+                mastery_pct = mastery_pct / (1.0 * df["kc"].nunique())
+                score_students_per_thd.append(score_student)
+                effort_per_thd.append(effort)
+                mastery_per_thd.append(mastery)
+                mastery_pct_per_thd.append(mastery_pct)
+
+                print "threshold: ", pretty(threshold), "overall: score:", pretty(score_student), " effort:", pretty(effort)," mean #stu_mastered:", pretty(mastery)," mean %stu_mastered:", pretty(mastery_pct)
+                file.write(",".join([str(threshold), str(score_student), str(effort), str(mastery), str(mastery_pct)]) + "\n")
+            file.close()
+            df_white = pd.DataFrame({"chapter":chapter, "threshold":thresholds, "score_student":score_students_per_thd, "effort":effort_per_thd, "mean_mastery":mastery_per_thd, "mean_mastery_pct":mastery_pct_per_thd})
+            df_white.to_csv(output)
 
         if plot:
             df = pd.read_csv(output)
-            WhiteVisualization.plot_component_relation("all", df["effort"].tolist(), df["score_student"].tolist(), "../images/" + exp_path + "chapter" + str(chapter) + "_", "effort", "score", nb_students=df["mean_mastery"], perkc_stu_thd = 30) #[0, max(practices)], [0,1],
+            if "score" in df.columns:
+                score_str = "score"
+            else:
+                score_str = "score_student"
+            WhiteVisualization.plot_component_relation("all", df["effort"].tolist(), df[score_str].tolist(),
+                            root_path + exp_path + "chapter" + str(chapter) + "_", "effort", "score",
+                            nb_students=df["mean_mastery"], perkc_stu_thd = 30, ylim=[0.53, 0.68]) #[0, max(practices)], [0,1],
 
     print "Done"
 

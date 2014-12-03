@@ -1,3 +1,4 @@
+# 2 hour for 500*20*10*500 rows
 
 # In[1]:
 
@@ -60,22 +61,19 @@ def get_fit(model, data):
 
 
 prng =np.random.RandomState(898898)
-initialize_type = "uniform" #with learning
-dataset_type = "exp2"
-path = "./data_20kc_perchapter/"
+#path = "/data/research/white/adaptivelearningservice/als/pfa/data/"
+path ="/Users/hy/inf/Study/CS/Projects_Codes_Data/Data/Data_white/synthetic_data/20kc_20prac_withlearning_g0.6s0.4_2500stu/" #"./data_20kc_perchapter/"
+datasets = 1
+kcs = 20
+sequence_length = 20
+initialize_type = "with_learning" #"with_learning"# "uniform" #
+guess_value = 0.6
+slip_value = 0.4
+students = 2500
 
-if dataset_type == "exp1":
-    datasets = 500
-    kcs = 5
-    sequence_length = 10
-    students = 500 #1000
-elif dataset_type == "exp2":
-    datasets = 500
-    kcs = 20
-    sequence_length = 10
-    students = 500 #1000
 
 id_out = csv.writer(open(path + "identifiers_obj.txt", "w"))
+id_out.writerow(["chapter", "kc"])
 log = open(path + "log.txt", "w")
 for d in range(100, 100+datasets):
     out = csv.writer(open(path + "homework_xref_{:03d}_decompressed.csv".format(d), "w"))
@@ -91,8 +89,8 @@ for d in range(100, 100+datasets):
         elif initialize_type == "with_learning":
             k0 = prng.uniform(0.001, 0.5) #Samples are uniformly distributed over the half-open interval [low, high) (includes low, but excludes high).
             lr = prng.uniform(0.2, 1)
-            guess  = 0.1 #prng.uniform(0, 1)
-            slip  = 0.1 #prng.uniform(0, 1)
+            guess = guess_value
+            slip = slip_value
 
         kc_ = str(d) + ".1." + str(kc)
         id_out.writerow([d, kc_])
