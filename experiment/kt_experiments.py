@@ -18,16 +18,6 @@ pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
 
-
-#out_path = "/data/research/white/kt/"
-out_path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/CodingProjects/BKT_Michael/standard-bkt-public-standard-bkt/mibkt_white_data/1kc_k0.2l0.3g0.6s0.4/" #"/Users/hy/inf/Study/CS/Projects_Codes_Data/CodingProjects/github/fast/input/"
-#in_path = "/data/research/white/adaptivelearningservice/als/pfa/intermediate/"
-in_path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/Data/Data_white/synthetic_data/1kc_k0.2l0.3g0.6s0.4/"
-format = "mibkt"
-columns = []
-combine_train_dev = True
-
-
 def load_intermediate_data(kc_id, index):
     data  = IntermediateData.load(kc_id, "obj", index)
     if format == "fast":
@@ -151,11 +141,15 @@ def get_white(df, index, df_white, threshold=0.6):
 
 
 
-
-
-def main(generate_synthetic_data=True, get_intermediate=True, gen_kt_input=True, run_kt=True, predict_on_train=True, compute_white=True,
-         index="index", thresholds=[0.6,0.7,0.8,0.9],
-         k=0.2, l=0.3, g=0, s=0, verbose=False): #syn_ #obj_chapter1_
+#out_path = "/data/research/white/kt/"
+out_path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/CodingProjects/BKT_Michael/standard-bkt-public-standard-bkt/mibkt_white_data/1kc_k0.2l0.3g0.1s0.1/" #"/Users/hy/inf/Study/CS/Projects_Codes_Data/CodingProjects/github/fast/input/"
+#in_path = "/data/research/white/adaptivelearningservice/als/pfa/intermediate/"
+in_path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/Data/Data_white/synthetic_data/1kc_k0.2l0.3g0.1s0.1/"
+format = "mibkt"
+columns = []
+combine_train_dev = True
+def main(generate_synthetic_data=False, get_intermediate=True, gen_kt_input=True, run_kt=True, predict_on_train=True, compute_white=True,
+         index="index", thresholds=[0.6,0.7,0.8,0.9], verbose=False): #syn_ #obj_chapter1_
     global columns
     columns = ["outcome", "user_id", "xml_qno",  "kc"] if format == "mibkt" else ["user_id", "kc", "outcome"]
 
@@ -164,7 +158,7 @@ def main(generate_synthetic_data=True, get_intermediate=True, gen_kt_input=True,
                              nb_students=[100]+range(500, 10000+500, 500),
                              seq_lens=[10, 20, 30],
                              path=in_path,
-                             k=0.2, l=0.3, g=0, s=0,
+                             k=0.2, l=0.3, g=0.1, s=0.1,
                              verbose=verbose)
 
     indexes, df_index_to_kc = get_index_kcs(in_path, index)

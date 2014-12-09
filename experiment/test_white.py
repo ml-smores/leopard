@@ -9,6 +9,7 @@ pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
+path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/Data/Data_white/real_data/"
 #private_data
 def main(filenames="../example_data/output.csv", threshold=0.5, plot=False, compute_ci=False): #example_data/example1.csv" threshold=0.6
     whites = []
@@ -20,8 +21,10 @@ def main(filenames="../example_data/output.csv", threshold=0.5, plot=False, comp
         policy = SingleKCPolicy(df, threshold=threshold)
         e = White(policy, compute_ci=compute_ci)
         print e
-        #auc, pct_correct = compute_standard_metrics(df)
+
+        #auc, pct_correct, accuracy, fmeasure, log_loss,  rmse, r2, mean_auc_by_kc, mean_auc_by_user = compute_standard_metrics(df, detail=False)
         #print "auc=", pretty(auc), "pct_correct=", pretty(pct_correct)
+
 
         if plot:
             kctype = input.split('/')[-1].split('_')[0]

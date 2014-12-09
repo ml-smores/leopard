@@ -105,7 +105,7 @@ def theoretical_mastery(k0, learning_rate,  j):
 
 def synthetic_data_analysis(k0, learning_rate, guess, slip, sequence_length, sequences):
     gold_model = kt(k0=k0, learning_rate=l, guess=g, slip=s)
-
+    gold_model.predict_proba(rows[0:i+1])
     obs = None
     sts = None
     for i in range(0,sequences):
