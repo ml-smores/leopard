@@ -21,13 +21,7 @@ class White:
         self.compute_ci = compute_ci
         self.score_kcs = 0
         self.effort_filled = 0
-        if compute_ci:
-            self.score_ci = [float('nan')] * 2
-            self.effort_ci = [float('nan')] * 2
-            self.effort_filled_ci = [float('nan')] * 2
-            self.evaluate_by_stu()
-        else:
-            self.evaluate()
+        self.evaluate()
         #self.ratio = 0
 
 
@@ -100,59 +94,6 @@ class White:
         # self.effort_ci  = cis
         # print "Bootstrapped 95% confidence intervals\nLow:", ci[0], "\nHigh:", ci[1]
 
-    def evaluate_by_stu(self):
-        df = self.policy.simulate()
-        df["kc"] = df.index
-        df_stus = df.groupby("id")
-
-        score_list = []
-        effort_list = []
-        effort_filled_list = []
-        for g, df_stu in df_stus:
-            self.detail[g] = {}
-
-            # Fill missing values (that occur when a student doesn't have transitions)
-            for c in df_stu.columns:
-                if "_pre" in c:
-                    opposite = c.replace("_pre", "_pos")
-                else:
-                    opposite = c.replace("_pos", "_pre")
-                df_stu[c] = df_stu[c].fillna(value= df_stu[opposite])
-
-            #print g, "\n", df_stu
-            # Store individual values:
-            self.detail[g]["mastery"]  = sum(df_stu["mastered"] == True)
-            self.detail[g]["mastery%"] = sum(df_stu["mastered"] == True) / (len(df_stu) + .0)
-            #TODO: describe
-            self.detail[g]["effort"] =  df_stu["effort_pos"].sum() #TODO: only one number to be described. another format of __repr__?
-            self.detail[g]["effort_filled"] =  (self.detail[g]["effort"] / (df_stu["kc"].nunique() * 1.0)) * df["kc"].nunique()
-            self.detail[g]["score_kc"] =  (df_stu["correct_pos"] / df_stu["n_pos"]).describe()
-            self.detail[g]["score"] =  df_stu["correct_pos"].sum() / df_stu["n_pos"].sum() #TODO: consider change name; now this one is consistent with effort
-
-            # Store aggregate values:
-            self.score_kcs += self.detail[g]["score_kc"]["mean"]#TODO: only one number to be described. consider using score_kcs
-            self.effort += self.detail[g]["effort"] #TODO: only one number to be described.
-            self.effort_filled += self.detail[g]["effort_filled"]
-            score_list.append(self.detail[g]["score_kc"]["mean"])
-            effort_list.append(self.detail[g]["effort"])
-            effort_filled_list.append(self.detail[g]["effort_filled"])
-
-        self.score_kcs /= len(df_stus) #TODO: consider using score_kcs
-        self.effort /= len(df_stus)
-        self.effort_filled /= len(df_stus)
-
-        df_bootstrap = pd.DataFrame({"score":score_list, "effort":effort_list, "effort_filled": effort_filled_list})
-        df_bootstrap.to_csv("../example_data/tdx_bootstrap_input.csv")
-        #compute confidence intervals around the mean, default  95% , 10000 samples
-        cis = bootstrap.ci(data=score_list, statfunction=scipy.mean) #, alpha=0.2, n_samples=20000)
-        self.score_ci  = cis
-        print "Bootstrapped 95% confidence intervals\nLow:", cis[0], "\nHigh:", cis[1]
-        cis_effort = bootstrap.ci(data=effort_list, statfunction=scipy.mean) #, alpha=0.2, n_samples=20000)
-        self.effort_ci  = cis_effort
-        print "Bootstrapped 95% confidence intervals\nLow:", cis_effort[0], "\nHigh:", cis_effort[1]
-        cis_effort_filled = bootstrap.ci(data=effort_filled_list, statfunction=scipy.mean) #, alpha=0.2, n_samples=20000)
-        self.effort_filled_ci  = cis_effort_filled
-        print "Bootstrapped 95% confidence intervals\nLow:", cis_effort_filled[0], "\nHigh:", cis_effort_filled[1]
 
 
 

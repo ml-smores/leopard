@@ -12,25 +12,19 @@ pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
 #private_data
-def main(filenames="../example_data/obj_predictions_chapter1_kt.tsv", threshold=0.6, plot=False, compute_ci=False): #example_data/example1.csv" threshold=0.6
-    '''input file columns : id	student	kc	predicted_outcome	outcome'''
-    # 1.2.6.41_15 not reaching mastery, 1.1.1.8_1 all reached mastery, 1.3.4.49_4 partially reached mastery
+def main(filenames="../example_data/output.csv", threshold=0.6, plot=False, compute_ci=False): #example_data/example1.csv" threshold=0.6
     whites = []
     for input in filenames.split(","):
         print input
         df = pd.read_csv(input, sep=("\t" if "tsv" in input else ","))
-        #df = df[df["kc"].isin(["1.3.4.49_4"])]
-        print "Datapoints:", len(df), "#kcs:", df.kc.nunique(), "threshold:", threshold, "#students:", df.student.nunique()
+        print df
+        print "Datapoints:", len(df), "#kcs:", df["kc"].nunique(), "threshold:", threshold, "#students:", df.student.nunique()
 
-        #df["predicted_outcome"] = 0 #for majority class
-        if compute_ci:
-            policy = SingleStudentPolicy(df, threshold=threshold)
-        else:
-            policy = SingleKCPolicy(df, threshold=threshold)
+        policy = SingleKCPolicy(df, threshold=threshold)
         e = White(policy, compute_ci=compute_ci)
         print e
-        auc, pct_correct = compute_standard_metrics(df)
-        print "auc=", pretty(auc), "pct_correct=", pretty(pct_correct)
+        #auc, pct_correct = compute_standard_metrics(df)
+        #print "auc=", pretty(auc), "pct_correct=", pretty(pct_correct)
 
         if plot:
             kctype = input.split('/')[-1].split('_')[0]
