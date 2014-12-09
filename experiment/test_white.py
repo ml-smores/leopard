@@ -2,8 +2,6 @@ __author__ = 'ugonzjo'
 
 from sm_evaluation.white import White
 from sm_evaluation.policies import *
-from sm_evaluation.common import *
-from sm_evaluation.standard import *
 from sm_evaluation.visualization import *
 import pandas as pd
 
@@ -12,12 +10,11 @@ pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
 #private_data
-def main(filenames="../example_data/output.csv", threshold=0.6, plot=False, compute_ci=False): #example_data/example1.csv" threshold=0.6
+def main(filenames="../example_data/output.csv", threshold=0.5, plot=False, compute_ci=False): #example_data/example1.csv" threshold=0.6
     whites = []
     for input in filenames.split(","):
         print input
         df = pd.read_csv(input, sep=("\t" if "tsv" in input else ","))
-        print df
         print "Datapoints:", len(df), "#kcs:", df["kc"].nunique(), "threshold:", threshold, "#students:", df.student.nunique()
 
         policy = SingleKCPolicy(df, threshold=threshold)

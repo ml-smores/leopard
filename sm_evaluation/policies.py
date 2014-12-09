@@ -46,6 +46,7 @@ class SingleKCPolicy (WhitePolicy):
 
             # hy: changed >= to >
             mastered_rows = (decisions["timestep"]  >  decisions["boundary"])
+
             decisions["mastered"] = mastered_rows
             if verbose:
                 print decisions
@@ -98,15 +99,6 @@ class SingleKCPolicy (WhitePolicy):
 
         # hy changed:
         if not mastery:
-            # for ind in ans.index:
-            #     student = students.get_group(ind)#ans.loc[pos, "student"])
-            #     boundary = student["boundary"].max()
-            #     timestep = student["timestep"].max()
-            #     ans.ix[ind, "effort"] = timestep if boundary == -1 else (boundary - 1)
-            #hy: following doesn't work:
-            #ans["effort"] = df.groupby("student").apply(self.adjust)
-            #ans["effort"] = df.groupby("student").apply(lambda x: x["timestep"].max() if x["boundary"].max() == -1 else (x["boundary"].max() - 1))
-
             #hy: commented original
             #     ans["effort"] = students["timestep"].max() + 1 #
             ans["effort"] = students["timestep"].max()

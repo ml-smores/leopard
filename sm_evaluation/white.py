@@ -39,12 +39,8 @@ class White:
                 effort =  v["effort"]
                 effort_filled = v["effort_filled"]
                 ans += "{} : {:.2f} ({:.2f}) {:2f} ({:.2f})  {:.2f}\n".format(k, score_kc, score, effort, effort_filled,  mastery_pct)
-        if not self.compute_ci:#"score_student" in v.keys():
-            ans += "overall score: {:.2f} ".format(self.score_students) + "\noverall effort: {:.2f} ".format(self.effort)
-        else:
-            ans += "overall score: {:.3f} ".format(self.score_kcs) + ("95% CI: [{:.3f}, {:.3f}]".format(self.score_ci[0], self.score_ci[1])) +\
-                 "\noverall effort: {:.3f} ".format(self.effort) + ("95% CI: [{:.3f}, {:.3f}]".format(self.effort_ci[0], self.effort_ci[1])) +\
-                 "\noverall effort(filled): {:.3f} ".format(self.effort_filled) + ("95% CI: [{:.3f}, {:.3f}]".format(self.effort_filled_ci[0], self.effort_filled_ci[1]))# if self.compute_ci else "")
+
+        ans += "overall score: {:.2f} ".format(self.score_students) + "\noverall effort: {:.2f} ".format(self.effort)
         return ans
 
     def evaluate(self):
@@ -65,7 +61,6 @@ class White:
                 df_kc[c] = df_kc[c].fillna(value= df_kc[opposite])
 
             # Store individual values:
-            #print df_kc
             self.detail[g]["mastery"]  = sum(df_kc["mastered"] == True)
             self.detail[g]["mastery%"] = sum(df_kc["mastered"] == True) / (len(df_kc) + .0)
             self.detail[g]["effort"] =  df_kc["effort_pos"].describe()
