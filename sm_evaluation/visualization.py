@@ -159,7 +159,8 @@ class WhiteVisualization():
     @staticmethod
     def plot_component_relation(kc, x, y, figure_path, xlabel, ylabel,
                                 xlim=None, ylim=None, linewidth=3, ycolor="black", label=None, dotsize=20,
-                                figure=None, axis=None, nb_students=None, perkc_stu_thd = 30, nb_kcs=None, tick_size=20, label_size=25):
+                                figure=None, axis=None, nb_students=None, perkc_stu_thd = 30,
+                                nb_kcs=None, tick_size=20, label_size=25, regress=False, legend=""):
         if figure is None:
             fig, ax = pl.subplots()
         else:
@@ -179,10 +180,18 @@ class WhiteVisualization():
             #todo: add sizes correspond to #students
         fig.subplots_adjust(left=0.15, bottom=0.15)
 
+        if regress:
+            slope, intercept, r_value, slope_pval, std_err = stats.linregress(x, y)
+            fit_fn = np.poly1d([slope, intercept])
+            legend = legend + ", slope=" + "{:4.3f}".format(slope) + "(p=" + pretty(slope_pval) + ")"
+            pl.plot(x, fit_fn(x), color="grey", linestyle="-", linewidth=1) #color='k', linestyle='--', linewidth=0.01
         if dot_color is not None:
-            pl.scatter(x, y, color=dot_color, s=dotsize, alpha = 0.6)
+            pl.scatter(x, y, color=dot_color, s=dotsize, alpha = 0.5, label=legend)
         else:
-            pl.scatter(x, y, s=dotsize)
+            pl.scatter(x, y, s=dotsize, color=ycolor, alpha = 0.5, label=legend)
+        pl.legend(loc='upper left', prop={'size':12})
+
+            #current_slope = {pct : ["{:4.2f}".format(slope), "{:5.3f}".format(slope_pval)]}
         # if label is None:
         #     pl.step(x, y, color=dot_color, linewidth=linewidth)
         # else:
@@ -327,4 +336,155 @@ def plot_scatterplot(x, y, xlabel, ylabel, file, title, ylim=None, label_size = 
     #     os.makedirs(file)
     pl.savefig(file)
     pl.close(fig)
+
+
+#pl.legend(["empirical p(c)", "theoretical p(c)", "empirical p(k)", "theoretical p(k)"], loc='upper center', bbox_to_anchor=(0.5, -0.05),  ncol=2)
+def plot_multiple_scatterplot_from_files(files, legends, colors, out_figure_path, chapter=100, linewidth=2, dotsize=20.0,
+                              perkc_stu_thd = 30, tick_size=20, label_size=25, regress=False, ylim=None, xlim=None): #ylim=[0.38, 1.02], xlim=[0, 100]):
+    fig, ax = pl.subplots()
+    fig.subplots_adjust(left=0.15, bottom=0.20)
+    if xlim is not None:
+        pl.xlim(xlim)
+    if ylim is not None:
+        pl.ylim(ylim)
+    xlabel = "effort"
+    ylabel = "score"
+    pl.ylabel(ylabel, fontsize=label_size)#ycolor
+    pl.xlabel(xlabel, fontsize=label_size)
+    pl.yticks(fontsize=tick_size)
+    pl.xticks(fontsize=tick_size, rotation=30)
+    for id in range(len(files)):
+        file = files[id]
+        legend = legends[id]
+        ycolor = colors[id]
+        df = pd.read_csv(file)
+        if "score" in df.columns:
+            score_str = "score"
+        else:
+            score_str = "score_student"
+        # WhiteVisualization.plot_component_relation("all", df["effort"].tolist(), df[score_str].tolist(),
+        #                     root_path + exp_path + "chapter" + str(chapter) + "_", "effort", "score",
+        #                     nb_students=df["mean_mastery"], perkc_stu_thd = 30, ylim=[0.53, 0.68])
+        kc = "all"
+        x = df["effort"].tolist()
+        y = df[score_str].tolist()
+        dot_color = None
+        perkc_stu_thd = 30
+        if "mean_mastery" in df.columns:
+            nb_students = df["mean_mastery"]
+            x = [x[i] for i, v in enumerate(nb_students) if v > 0]#30 #250
+            y = [y[i] for i, v in enumerate(nb_students) if v > 0]#30 #250
+            dot_color = [ycolor] * len(y)
+            dotsize_list = [dotsize] * len(y)
+            for pos in range(len(y)):
+                if nb_students[pos] < perkc_stu_thd:
+                    dot_color[pos] = "lightgrey"
+                    dotsize_list[pos] = 0.3 * dotsize_list[pos]
+            #todo: add sizes correspond to #students
+        if regress:
+            slope, intercept, r_value, slope_pval, std_err = stats.linregress(x, y)
+            fit_fn = np.poly1d([slope, intercept])
+            #legend = legend + ", slope=" + "{:4.3f}".format(slope) + "(p=" + pretty(slope_pval) + ")"
+            pl.plot(x, fit_fn(x), color="grey", linestyle="--", linewidth=linewidth) #color='k', linestyle='--', linewidth=0.01
+        if dot_color is not None:
+            pl.scatter(x, y, color=dot_color, s=dotsize, alpha = 0.4, label=legend)
+        else:
+            pl.scatter(x, y, s=dotsize, color=ycolor, alpha = 0.4, label=legend)
+        pl.legend(prop={'size':12}, bbox_to_anchor=(1, 0.5))
+        #pl.legend(["empirical p(c)", "theoretical p(c)", "empirical p(k)", "theoretical p(k)"],
+        # loc='upper center', bbox_to_anchor=(0.5, -0.05),  ncol=2)
+
+    out_file = out_figure_path + (ylabel.replace("/", "_over_") + "_" + xlabel + "_{}.pdf").format(kc)
+    print "outputting to ", out_file
+    pl.savefig(out_file)
+    pl.close(fig)
+
+
+#pl.legend(["empirical p(c)", "theoretical p(c)", "empirical p(k)", "theoretical p(k)"], loc='upper center', bbox_to_anchor=(0.5, -0.05),  ncol=2)
+def plot_multiple_scatterplot(data, legends, colors, out_figure_path, chapter=100, linewidth=2, dotsize=20.0,
+                              perkc_stu_thd = 30, tick_size=15, label_size=25, regress=False,
+                              xlabel = "effort", ylabel = "score", yconstant=None, use_alpha=False, ylim=None, xlim=[0,10500]): #ylim=[0.38, 1.02], xlim=[0, 100],
+    fig, ax = pl.subplots()
+    fig.subplots_adjust(left=0.15, bottom=0.15)
+    if xlim is not None:
+        pl.xlim(xlim)
+    if ylim is not None:
+        pl.ylim(ylim)
+    pl.ylabel(ylabel, fontsize=label_size)#ycolor
+    pl.xlabel(xlabel, fontsize=label_size)
+    pl.yticks(fontsize=tick_size)
+    pl.xticks(fontsize=tick_size, rotation=15)
+    for id in range(len(data)):
+        legend = legends[id]
+        ycolor = colors[id]
+        df = data[id]
+        if "score" in xlabel or "score" in ylabel:
+            score_str = "score" if "score" in df.columns else "score_student"
+        # WhiteVisualization.plot_component_relation("all", df["effort"].tolist(), df[score_str].tolist(),
+        #                     root_path + exp_path + "chapter" + str(chapter) + "_", "effort", "score",
+        #                     nb_students=df["mean_mastery"], perkc_stu_thd = 30, ylim=[0.53, 0.68])
+        kc = "all"
+        x = df[xlabel].tolist()
+        y = df[ylabel].tolist()
+        dot_color = None
+        perkc_stu_thd = 30
+        if "mean_mastery" in df.columns:
+            nb_students = df["mean_mastery"]
+            x = [x[i] for i, v in enumerate(nb_students) if v >= 0]#30 #250
+            y = [y[i] for i, v in enumerate(nb_students) if v >= 0]#30 #250
+            dot_color = [ycolor] * len(y)
+            dotsize_list = [dotsize] * len(y)
+            for pos in range(len(y)):
+                if nb_students[pos] < perkc_stu_thd:
+                    #dot_color[pos] = "lightgrey"
+                    dotsize_list[pos] = 0.2 * dotsize_list[pos]
+            #todo: add sizes correspond to #students
+        if regress:
+            slope, intercept, r_value, slope_pval, std_err = stats.linregress(x, y)
+            fit_fn = np.poly1d([slope, intercept])
+            #legend = legend + ", slope=" + "{:4.3f}".format(slope) + "(p=" + pretty(slope_pval) + ")"
+            pl.plot(x, fit_fn(x), color=ycolor, linestyle="--", alpha=0.4, linewidth=linewidth) #color='k', linestyle='--', linewidth=0.01
+        if dot_color is not None:
+            pl.scatter(x, y, color=dot_color, s=dotsize_list, alpha = (0.4 if use_alpha else 1) , label=legend)
+        else:
+            pl.scatter(x, y, s=dotsize_list, color=ycolor, alpha = (0.4 if use_alpha else 1), label=legend)
+        pl.legend(prop={'size':8}, loc="upper center", bbox_to_anchor=(0.5, 1.08), ncol=3)
+        #pl.legend(["empirical p(c)", "theoretical p(c)", "empirical p(k)", "theoretical p(k)"],
+        # loc='upper center', bbox_to_anchor=(0.5, -0.05),  ncol=2)
+    if yconstant is not None:
+        pl.axhline(y=yconstant, color="red", linewidth=1)#, ymin, ymax
+
+    out_file = out_figure_path + (ylabel.replace("/", "_over_") + "_" + xlabel + "_{}.pdf").format(kc)
+    print "outputting to ", out_file
+    pl.savefig(out_file)
+    pl.close(fig)
+
+
+def main():
+    path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/Data/Data_white/"
+    plot_multiple_scatterplot_from_files([path+"real_data/backup/obj_predictions_chapter1_white_varying_theshold.csv",
+                               path+"synthetic_data/20kc_10prac_withlearning_GS0_2500stu/100_white_varying_theshold.csv",
+                               path+"synthetic_data/20kc_20prac_withlearning_GS0_2500stu/100_white_varying_theshold.csv"],
+                              legends=["real data", "with learning, short", "with learning, long"],
+                              colors=["black", "blue", "green"],#, "magenta", "red"],
+                              out_figure_path=path + "synthetic_data/",
+                              regress=False)
+    #path+"synthetic_data/20kc_10prac_withlearning_g0.6s0.4_2500stu/100_white_varying_theshold.csv", path+"synthetic_data/20kc_20prac_withlearning_g0.6s0.4_2500stu/100_white_varying_theshold.csv",
+    #"high G+S short sequence", "high G+S long sequence",
+
+if __name__ == "__main__":
+    import sys
+    args = sys.argv
+    print args
+    cl = {}
+    for i in range(1, len(args)): # index 0 is the filename
+        pair  =  args[i].split('=')
+        if pair[1].isdigit():
+            cl[pair[0]] = int(pair[1])
+        elif pair[1].lower() in ("true", "false"):
+            cl[pair[0]] = (pair[1].lower() == 'true')
+        else:
+            cl[pair[0]] = pair[1]
+
+    main(**cl)
 

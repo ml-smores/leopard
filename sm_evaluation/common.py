@@ -6,7 +6,11 @@ import pandas as pd
 import scipy
 import matplotlib.pyplot as pl
 from scipy import stats
+import datetime
 
+
+def time():
+    return datetime.datetime.now().time().isoformat()
 
 def pretty(x):
     if isinstance(x, dict):
@@ -61,4 +65,5 @@ if __name__ == "__main__":
             cl[pair[0]] = pair[1]
 
     main(**cl)
+
 

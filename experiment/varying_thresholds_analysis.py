@@ -12,7 +12,7 @@ pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
 root_path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/Data/Data_white/synthetic_data/"#synthetic_data/" #real_data/"
-exp_path = "20kc_20prac_withlearning_g0.6s0.4_2500stu/"#"20kc_10prac_withlearning_2500stu/"
+exp_path = "20kc_10prac_withlearning_g0.6s0.4_2500stu/"#"20kc_10prac_withlearning_2500stu/"
 
 #root_path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/CodingProjects/github/white/example_data/"
 #exp_path = ""
@@ -122,7 +122,7 @@ def main(prefix = "obj_predictions_chapter", synthetic_data=True, plot=True, get
                 score_str = "score_student"
             WhiteVisualization.plot_component_relation("all", df["effort"].tolist(), df[score_str].tolist(),
                             root_path + exp_path + "chapter" + str(chapter) + "_", "effort", "score",
-                            nb_students=df["mean_mastery"], perkc_stu_thd = 30, ylim=[0.53, 0.68]) #[0, max(practices)], [0,1],
+                            nb_students=df["mean_mastery"], perkc_stu_thd = 30, ylim=[0.53, 0.68])#, regress=True, legend="high S+G, short sequence", ycolor='blue') #[0, max(practices)], [0,1],
 
     print "Done"
 

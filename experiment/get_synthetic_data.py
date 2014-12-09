@@ -10,11 +10,15 @@ import matplotlib.pyplot as plt
 import random
 import numpy as np
 import csv
+import os
+import os.path
 
 
 # In[2]:
 
 # Functions and constants
+
+prng =np.random.RandomState(898898)
 states = ["novice","master"]
 observations = ["incorrect", "correct"]
 
@@ -60,63 +64,82 @@ def get_fit(model, data):
     return ll
 
 
-prng =np.random.RandomState(898898)
-#path = "/data/research/white/adaptivelearningservice/als/pfa/data/"
-path ="/Users/hy/inf/Study/CS/Projects_Codes_Data/Data/Data_white/synthetic_data/20kc_20prac_withlearning_g0.6s0.4_2500stu/" #"./data_20kc_perchapter/"
-datasets = 1
-kcs = 20
-sequence_length = 20
-initialize_type = "with_learning" #"with_learning"# "uniform" #
-guess_value = 0.6
-slip_value = 0.4
-students = 2500
+def get_data(path,
+        datasets,
+        kcs,
+        sequence_length,
+        initialize_type,
+        k0_value,
+        lr_value,
+        guess_value,
+        slip_value,
+        students,
+        chapters=None,
+        verbose=False):
+
+    print "output to:" + path
+    if not os.path.isdir(path):
+        print "creating dir:" + path
+        os.makedirs(path)
+    id_out = csv.writer(open(path + "identifiers_obj.txt", "w"))
+    id_out.writerow(["chapter", "kc"])
+    log = open(path + "log.txt", "w")
+
+    if chapters is None:
+        chapter_ids = range(100, 100+datasets)
+    else:
+        if len(chapters) != datasets:
+            print "Error: please respecify your chapters!"
+            exit(-1)
+        chapter_ids = chapters
+    for d in chapter_ids:
+        out = csv.writer(open(path + "homework_xref_{:03d}_decompressed.csv".format(d), "w"))
+        out.writerow(["user_id", "objective_id", "xml_qno","xml_correct_first",      "homework_id", "isTeacher", "xml_state","chapter_id", "section_id", "exercise_id", "handedin", "numberCorrect", "numberAttempts", "duration"])
+
+        avg_ones_per_kc = []
+        for kc in range(9000, 9000+kcs):
+            if initialize_type == "uniform":
+                k0 = prng.uniform(0.001, 1)
+                lr = prng.uniform(0.001, 1)
+                guess  = prng.uniform(0.001, 1)
+                slip  = prng.uniform(0.001, 1)
+            elif initialize_type == "with_learning":
+                k0 = prng.uniform(0.001, 0.5) #Samples are uniformly distributed over the half-open interval [low, high) (includes low, but excludes high).
+                lr = prng.uniform(0.2, 1)
+                guess = guess_value
+                slip = slip_value
+            elif initialize_type is None:
+                k0 = k0_value
+                lr = lr_value
+                guess = guess_value
+                slip = slip_value
+
+            kc_ = str(d) + ".1." + str(kc)
+            id_out.writerow([d, kc_])
+            print "chapter:", d, "kc:", kc_, "k0:", k0, "lr:", lr, "g:", guess, "s:", slip, "#stu:", students, "#prac:", sequence_length
+            log.write(",".join(["chapter:", str(d), "kc:", kc_, "k0:", str(k0), "lr:", str(lr), "g:", str(guess), "s:", str(slip)])+"\n")
+
+            model = kt(k0=k0, learning_rate=lr, guess=guess, slip=slip)
+            total_nb_ones = 0
+            for s in range(0, students):
+                nb_ones = 0
+                obs, hidden = model.sample(sequence_length, random_state=prng)
+                for ix, o in enumerate (obs):
+                    nb_ones += 1 if o == 1 else 0
+                    out.writerow([s, kc, ix + ((kc-9000) * sequence_length), o,      1, 0, "complete", d, 1, 1,  "2013-09-26 11:36:00,", 0, 0, 50])
+                if verbose:
+                    print "\t\tstu:",s, "hidden:", str(hidden), "obs:",  str(obs), "#1:", nb_ones
+                log.write( "\t\t" + "\t".join(["stu:", str(s), "hidden:", str(hidden), "obs:",  str(obs), "#1:", str(nb_ones)])+"\n")
+                total_nb_ones += nb_ones
+            avg_ones = total_nb_ones / (1.0 * students)
+            print "\t\tavg #1:", avg_ones
+            log.write( "\t\t"+ ",".join(["avg #1:", str(avg_ones)])+"\n")
+            avg_ones_per_kc.append(avg_ones)
+        print "chapter", d, "per kc avg #1:", np.mean(avg_ones_per_kc), avg_ones_per_kc
+        log.write( "\t\t" + "\t".join(["chapter"+str(d), "per kc avg #1:", str(np.mean(avg_ones_per_kc)), str(avg_ones_per_kc)])+"\n")
 
 
-id_out = csv.writer(open(path + "identifiers_obj.txt", "w"))
-id_out.writerow(["chapter", "kc"])
-log = open(path + "log.txt", "w")
-for d in range(100, 100+datasets):
-    out = csv.writer(open(path + "homework_xref_{:03d}_decompressed.csv".format(d), "w"))
-    out.writerow(["user_id", "objective_id", "xml_qno","xml_correct_first",      "homework_id", "isTeacher", "xml_state","chapter_id", "section_id", "exercise_id", "handedin", "numberCorrect", "numberAttempts", "duration"])
-
-    avg_ones_per_kc = []
-    for kc in range(9000, 9000+kcs):
-        if initialize_type == "uniform":
-            k0 = prng.uniform(0.001, 1)
-            lr = prng.uniform(0.001, 1)
-            guess  = prng.uniform(0.001, 1)
-            slip  = prng.uniform(0.001, 1)
-        elif initialize_type == "with_learning":
-            k0 = prng.uniform(0.001, 0.5) #Samples are uniformly distributed over the half-open interval [low, high) (includes low, but excludes high).
-            lr = prng.uniform(0.2, 1)
-            guess = guess_value
-            slip = slip_value
-
-        kc_ = str(d) + ".1." + str(kc)
-        id_out.writerow([d, kc_])
-        print "chapter:", d, "kc:", kc_, "k0:", k0, "lr:", lr, "g:", guess, "s:", slip
-        log.write(",".join(["chapter:", str(d), "kc:", kc_, "k0:", str(k0), "lr:", str(lr), "g:", str(guess), "s:", str(slip)])+"\n")
-
-        model = kt(k0=k0, learning_rate=lr, guess=guess, slip=slip)
-        total_nb_ones = 0
-        for s in range(0,students):
-            nb_ones = 0
-            obs, hidden = model.sample(sequence_length, random_state=prng)
-            for ix, o in enumerate (obs):
-                nb_ones += 1 if o == 1 else 0
-                out.writerow([s, kc, ix + ((kc-9000) * sequence_length), o,      1, 0, "complete", d, 1, 1,  "2013-09-26 11:36:00,", 0, 0, 50])
-            print "\t\tstu:",s, "hidden:", str(hidden), "obs:",  str(obs), "#1:", nb_ones
-            log.write( "\t\t" + "\t".join(["stu:", str(s), "hidden:", str(hidden), "obs:",  str(obs), "#1:", str(nb_ones)])+"\n")
-            total_nb_ones += nb_ones
-        avg_ones = total_nb_ones / (1.0 * students)
-        print "\t\tavg #1:", avg_ones
-        log.write( "\t\t"+ ",".join(["avg #1:", str(avg_ones)])+"\n")
-        avg_ones_per_kc.append(avg_ones)
-    print "chapter", d, "per kc avg #1:", np.mean(avg_ones_per_kc), avg_ones_per_kc
-    log.write( "\t\t" + "\t".join(["chapter"+str(d), "per kc avg #1:", str(np.mean(avg_ones_per_kc)), str(avg_ones_per_kc)])+"\n")
-
-
-'''Testing code'''
+# '''Testing code'''
 # In[3]:
 
 # model1 = kt(k0=0.1, learning_rate=0.1, guess=0.0, slip=0.05)
@@ -144,5 +167,45 @@ for d in range(100, 100+datasets):
 #
 
 # In[25]:
+
+def run_experiment(nb_students, seq_lens, chapters, path, k, l, g, s, verbose=False):
+    for i in range(len(nb_students)):
+        nb_stu = nb_students[i]
+        for seq_len in seq_lens:
+            get_data(path = path + str(seq_len) + "prac_" + str(nb_stu) + "stu/", #"./data_20kc_perchapter/"
+                datasets = 1,
+                kcs = 1,
+                sequence_length = seq_len,
+                initialize_type = None, #"with_learning"# "uniform" #
+                k0_value = k,
+                lr_value = l,
+                guess_value = g,
+                slip_value = s,
+                students = nb_stu,
+                chapters = chapters,
+                verbose=verbose)
+
+def main():
+    run_experiment(nb_students = [100] + range(500, 2000+500, 500), seq_lens = [10, 20], chapters = [100])
+
+
+if __name__ == "__main__":
+    import sys
+
+    args = sys.argv
+    print args
+    cl = {}
+    for i in range(1, len(args)):  # index 0 is the filename
+        pair = args[i].split('=')
+        if pair[1].isdigit():
+            cl[pair[0]] = int(pair[1])
+        elif pair[1].lower() in ("true", "false"):
+            cl[pair[0]] = (pair[1].lower() == 'true')
+        else:
+            cl[pair[0]] = pair[1]
+
+    main(**cl)
+
+
 
 

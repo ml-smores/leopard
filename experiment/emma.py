@@ -15,9 +15,9 @@ import numpy as np
 # 3. Compute mean over each sequence score and get the theoretical score of this KC.
 
 verbose = False
-path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/Data/Data_white/synthetic_data/20kc_10prac_withlearning_GS0_500stu/"
-maximum_length = 10
-threshold = 0.6
+path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/Data/Data_white/synthetic_data/1kc_k0.2l0.3g0.1s0.1/"
+maximum_length = 20
+threshold = 0.9
 compute_effort = False
 use_pL_to_judge_mastery = False
 output_posterior_pL = False
@@ -25,8 +25,6 @@ obs_seqs = []
 hidden_seqs = []
 pcorrect_seqs = []
 likelihood = []
-pGuess = 0.0
-pSlip = 0.0
 
 def get_kc_parameters(file):
     kc_parameters = {}
@@ -77,23 +75,24 @@ def expOppNeed(p_path, pL, pT=0.3, pG=0.1, pS=0.1, d=0.6, eita=0.0000001, length
         p_Lnext_given_c = p_c_pLnext / (p_c_pLnext + p_c_pnLnext)
         p_path_c = p_path * p_c_given_pL
         if not compute_effort:
-            EO_c = expOppNeed(pL=p_Lnext_given_c, p_path=p_path_c, length=length, obs=obs+[1], hidden=hidden+[(p_Lnext_given_c if output_posterior_pL else pL)], pcorrect=pcorrect+[p_correct])
+            EO_c = expOppNeed(pL=p_Lnext_given_c, p_path=p_path_c, d=d, length=length, obs=obs+[1], hidden=hidden+[(p_Lnext_given_c if output_posterior_pL else pL)], pcorrect=pcorrect+[p_correct])
         else:
-            EO_c = expOppNeed(pL=p_Lnext_given_c, p_path=p_path_c, length=length)
+            EO_c = expOppNeed(pL=p_Lnext_given_c, p_path=p_path_c, d=d, length=length)
         p_w_given_pL = (1 - pG) * (1 - pL) + pS * pL
         p_w_pLnext = pS * (pL + pT * (1 - pL))
         p_w_pnLnext = (1 - pG) * (1 - pT) * (1 - pL)
         p_Lnext_given_w = p_w_pLnext /  (p_w_pLnext + p_w_pnLnext)
         p_path_w = p_path * p_w_given_pL
         if not compute_effort:
-            EO_w = expOppNeed(pL=p_Lnext_given_w, p_path=p_path_w, length=length, obs=obs+[0], hidden=hidden+[(p_Lnext_given_w if output_posterior_pL else pL)], pcorrect=pcorrect+[p_correct])
+            EO_w = expOppNeed(pL=p_Lnext_given_w, p_path=p_path_w, d=d, length=length, obs=obs+[0], hidden=hidden+[(p_Lnext_given_w if output_posterior_pL else pL)], pcorrect=pcorrect+[p_correct])
         else:
-            EO_w = expOppNeed(pL=p_Lnext_given_w, p_path=p_path_w, length=length)
+            EO_w = expOppNeed(pL=p_Lnext_given_w, p_path=p_path_w, d=d, length=length)
         return (1 + p_c_given_pL*EO_c + p_w_given_pL * EO_w)#(1 + p_c_given_pL*EO_c*flag + p_w_given_pL * EO_w* flag)
 
-def compute_emma():
+def compute_emma(pL0=None, pT=None, pG=None, pS=None):
     global obs_seqs, hidden_seqs, likelihood, pcorrect_seqs, compute_effort
-    kc_parameters = get_kc_parameters(path + "log.txt")
+    if pL0 is None:
+        kc_parameters = get_kc_parameters(path + "log.txt")
     df_chapter_kcs = pd.read_csv(path + "identifiers_obj.txt")
     chapter_effort = {}
     for chapter in df_chapter_kcs.chapter.unique():
@@ -101,21 +100,19 @@ def compute_emma():
         df_a_chapter = df_chapter_kcs[df_chapter_kcs["chapter"] == chapter]
         df_a_chapter_seqs = pd.DataFrame()
         for kc in df_a_chapter.kc.unique():
-            if kc not in kc_parameters.keys():
+            if pL0 is None and kc not in kc_parameters.keys():
                 print "Can't retrieve paramters for kc ", kc
                 continue
             print kc
-            pL0, pT, pG, pS =  kc_parameters[kc]
-            if pGuess > -1:
-                pG = pGuess
-            if pSlip > -1:
-                pS = pSlip
-            print "\t", pL0, pT, pG, pS
+            if pL0 is None:
+                pL0, pT, pG, pS =  kc_parameters[kc]
+            print "\t", pL0, pT, pG, pS, threshold
             effort += expOppNeed(p_path=1, pL=pL0, pT=pT, pG=pG, pS=pS, d=threshold)
             print "\teffort:", effort
-            df_a_chapter_seqs = pd.concat([df_a_chapter_seqs,
-                      pd.DataFrame({"kc":[kc]*len(obs_seqs), "obs":obs_seqs, "hidden":hidden_seqs,
-                                    "likelihood":likelihood, "pcorrect":pcorrect_seqs})])
+            if not compute_effort:
+                df_a_chapter_seqs = pd.concat([df_a_chapter_seqs,
+                          pd.DataFrame({"kc":[kc]*len(obs_seqs), "obs":obs_seqs, "hidden":hidden_seqs,
+                                        "likelihood":likelihood, "pcorrect":pcorrect_seqs})])
             obs_seqs = []
             hidden_seqs = []
             likelihood = []
@@ -123,7 +120,8 @@ def compute_emma():
         if compute_effort:
             print "chapter", chapter, "effort:", effort
             chapter_effort[chapter] = effort
-        df_a_chapter_seqs.to_csv(path + "chapter" + str(chapter) + "_seq.csv")
+        else:
+            df_a_chapter_seqs.to_csv(path + "chapter" + str(chapter) + "_seq.csv")
     if compute_effort:
         df_chapter_effort = pd.DataFrame(chapter_effort.items(), columns=['chapter', 'effort'])
         print df_chapter_effort
@@ -185,13 +183,13 @@ def compare(file1, file2, type="effort"):
 
 def main():
     global compute_effort
-    # compute_effort = True
-    # compute_emma()
-    compare(path+"syn_white_kt_on_train.csv", path+"syn_emma_effort_by_pcorrect.csv", "effort")
+    compute_effort = True
+    compute_emma(pL0=0.2, pT=0.3, pG=0.1, pS=0.1)
+    #compare(path+"syn_white_kt_on_train.csv", path+"syn_emma_effort_by_pcorrect.csv", "effort")
     # compute_effort = False
     # compute_emma()
     # compute_score()
-    compare(path+"syn_white_kt_on_train.csv", path+"syn_emma_score_by_pcorrect.csv", "score")
+    #compare(path+"syn_white_kt_on_train.csv", path+"syn_emma_score_by_pcorrect.csv", "score")
 
 
 if __name__ == "__main__":
@@ -210,3 +208,27 @@ if __name__ == "__main__":
             cl[pair[0]] = pair[1]
 
     main(**cl)
+
+#threshold=0.6
+#0.2 0.3 0.1 0.1, maximum length 10: 5.587356
+#0.2 0.3 0.1 0.1, maximum length 20: 6.738366
+#0.2 0.3 0.1 0.1, maximum length 30: 6.984749
+#0.2 0.3 0.1 0.1, unlimited length: 7.05185265434
+
+#threshold=0.7
+#0.2 0.3 0.1 0.1, maximum length 10: 5.587356
+#0.2 0.3 0.1 0.1, maximum length 20:
+#0.2 0.3 0.1 0.1, maximum length 30:
+#0.2 0.3 0.1 0.1, unlimited length:
+
+#threshold=0.8
+#0.2 0.3 0.1 0.1, maximum length 10: 6.3517
+#0.2 0.3 0.1 0.1, maximum length 20:
+#0.2 0.3 0.1 0.1, maximum length 30:
+#0.2 0.3 0.1 0.1, unlimited length:
+
+#threshold=0.9
+#0.2 0.3 0.1 0.1, maximum length 10: 10
+#0.2 0.3 0.1 0.1, maximum length 20:
+#0.2 0.3 0.1 0.1, maximum length 30:
+#0.2 0.3 0.1 0.1, unlimited length:
