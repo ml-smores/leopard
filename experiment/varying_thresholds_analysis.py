@@ -3,7 +3,7 @@ __author__ = 'ugonzjo'
 from sm_evaluation.white import White
 from sm_evaluation.policies import *
 from sm_evaluation.common import *
-from sm_evaluation.standard import *
+from sm_evaluation.conventional_metrics import *
 from sm_evaluation.visualization import *
 import pandas as pd
 
