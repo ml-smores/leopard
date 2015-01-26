@@ -194,6 +194,7 @@ class SingleStudentPolicy (WhitePolicy):
                                   "max"     :   "effort",
                                   "<lambda>":   "correct"})
 
+        #JPG: This is very slow.  Should be fixed >:(
         # hy changed:
         if not mastery:
             for ind in ans.index:

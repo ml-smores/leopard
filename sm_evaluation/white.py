@@ -1,16 +1,6 @@
-import numpy as np
-import scipy
-#import scikits.bootstrap as bootstrap
-import pandas as pd
-
-# boostrap confidence interval:
-# https://scikits.appspot.com/bootstrap (homepage: https://github.com/cgevans/scikits-bootstrap/blob/master/scikits/bootstrap/bootstrap.py)
-# example: http://www.randalolson.com/2012/08/06/statistical-analysis-made-easy-in-python/
-# Currently hy uses per student on all kcs' effort (score) as a datapoint to do bootstrap for mean estimation;
-# TODO: think about how to keep per kc perspective to do bootstrap
 
 class White:
-    def __init__(self, policy, compute_ci=False):
+    def __init__(self, policy):
         self.policy = policy
         self.detail = {}
         self.effort = 0
@@ -18,7 +8,6 @@ class White:
         self.mastery = 0.0
         self.mastery_pct = 0.0
 
-        self.compute_ci = compute_ci
         self.score_kcs = 0
         self.effort_filled = 0
         self.evaluate()
