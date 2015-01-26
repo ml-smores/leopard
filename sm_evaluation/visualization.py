@@ -1,10 +1,8 @@
 __author__ = 'ugonzjo'
 
-from matplotlib import pyplot as pl, pyplot, cm, colors
-from scipy import stats
-import pandas as pd
-from common import *
 import numpy as np
+
+
 
 
 class WhiteVisualization():

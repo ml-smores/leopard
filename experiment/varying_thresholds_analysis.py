@@ -1,11 +1,11 @@
 __author__ = 'ugonzjo'
 
+import pandas as pd
+
 from sm_evaluation.white import White
 from sm_evaluation.policies import *
-from sm_evaluation.common import *
-from sm_evaluation.conventional_metrics import *
 from sm_evaluation.visualization import *
-import pandas as pd
+
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)

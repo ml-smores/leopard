@@ -1,11 +1,9 @@
 __author__ = 'ugonzjo'
 
-import pandas as pd
-from pandas.io import sql
-from sm_evaluation.common import *
 import numpy as np
-from Activity import *
 
+from experiment.common import *
+from Activity import *
 
 
 class KCType:

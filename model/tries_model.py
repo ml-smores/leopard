@@ -1,8 +1,8 @@
 __author__ = 'hy'
 
 import numpy as np
-import pandas as pd
-from sm_evaluation.common import *
+
+from experiment.common import *
 
 
 class TriesModel():
