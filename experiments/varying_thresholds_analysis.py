@@ -1,10 +1,8 @@
 __author__ = 'ugonzjo'
 
-import pandas as pd
-
 from sm_evaluation.white import White
 from sm_evaluation.policies import *
-from sm_evaluation.visualization import *
+from experiments.visualization import *
 
 
 pd.set_option('display.max_rows', 500)

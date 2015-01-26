@@ -1,13 +1,12 @@
 
 # In[1]:
 
-import numpy as np
 from sklearn import hmm
-from sklearn.metrics import mean_absolute_error
 import matplotlib.pyplot as pl
-import math
 import pandas as pd
-from sm_evaluation.visualization import *
+
+from experiments.visualization import *
+
 #get_ipython().magic(u'matplotlib inline')
 
 
@@ -252,7 +251,7 @@ def main():
 
 
 
-    # /Users/hy/inf/Study/CS/Projects_Codes_Data/CodingProjects/github/white/experiment/analytical_analysis.py:180: RuntimeWarning: divide by zero encountered in log
+    # /Users/hy/inf/Study/CS/Projects_Codes_Data/CodingProjects/github/white/experiments/analytical_analysis.py:180: RuntimeWarning: divide by zero encountered in log
     #   return np.log( (1 - slip - pcorrect) /  A  ) / np.log( 1 - learning_rate )
 
     #sequences = 1000

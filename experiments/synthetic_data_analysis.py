@@ -1,10 +1,11 @@
 __author__ = 'hy'
 
+import pandas as pd
+
 from sm_evaluation.white import *
-from sm_evaluation.visualization import *
+from experiments.visualization import *
 from sm_evaluation.policies import *
 from sm_evaluation.conventional_metrics import *
-import pandas as pd
 
 
 root_path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/Data/Data_white/synthetic_data/"#real_data/"

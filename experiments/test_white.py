@@ -1,9 +1,11 @@
 __author__ = 'ugonzjo'
 
+import pandas as pd
+
 from sm_evaluation.white import White
 from sm_evaluation.policies import *
-from sm_evaluation.visualization import *
-import pandas as pd
+from experiments.visualization import *
+
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -11,14 +13,14 @@ pd.set_option('display.width', 1000)
 
 path = "/Users/hy/inf/Study/CS/Projects_Codes_Data/Data/Data_white/real_data/"
 #private_data
-def main(filenames="../example_data/output.csv", threshold=0.5, plot=True): #example_data/example1.csv" threshold=0.6
+def main(filenames="../example_data/example1.csv", threshold=0.7, plot=False): #example_data/example1.csv" threshold=0.6
     whites = []
     for input in filenames.split(","):
         print input
         df = pd.read_csv(input, sep=("\t" if "tsv" in input else ","))
         print "Datapoints:", len(df), "#kcs:", df["kc"].nunique(), "threshold:", threshold, "#students:", df.student.nunique()
 
-        policy = SingleKCPolicy(df, threshold=threshold)
+        policy = SingleKCPolicy(df, threshold=threshold, verbose=True)
         e = White(policy)
         print e
 

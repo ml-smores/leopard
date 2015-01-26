@@ -2,7 +2,7 @@ __author__ = 'ugonzjo'
 
 import numpy as np
 
-from experiment.common import *
+from experiments.common import *
 from Activity import *
 
 

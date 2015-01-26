@@ -1,9 +1,11 @@
 __author__ = 'hy'
 
 import pandas as pd
-from sm_evaluation.visualization import *
 from scipy import stats
 import numpy as np
+
+from experiments.visualization import *
+
 
 # TODO:
 # when pG+pS<1, pcorrect should be non-decreasing, double check!

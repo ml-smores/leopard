@@ -6,7 +6,6 @@ import os.path
 from sm_evaluation.white import White
 from sm_evaluation.policies import *
 from sm_evaluation.conventional_metrics import *
-from sm_evaluation.visualization import *
 from get_synthetic_data import *
 from split_data import *
 

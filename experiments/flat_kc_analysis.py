@@ -4,7 +4,7 @@ import pandas as pd
 
 from sm_evaluation.white import White
 from sm_evaluation.policies import SingleKCPolicy
-from experiment.common import *
+from experiments.common import *
 from sm_evaluation.conventional_metrics import *
 
 

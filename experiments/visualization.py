@@ -3,8 +3,6 @@ __author__ = 'ugonzjo'
 import numpy as np
 
 
-
-
 class WhiteVisualization():
 
     def __init__(self, white_obj):
