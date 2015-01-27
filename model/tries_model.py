@@ -2,7 +2,7 @@ __author__ = 'hy'
 
 import numpy as np
 
-from experiment.common import *
+from experiments.common import *
 
 
 class TriesModel():
