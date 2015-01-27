@@ -17,7 +17,7 @@ from experiments.visualization import *
 # 3. Compute mean over each sequence score and get the theoretical score of this KC.
 
 verbose = True
-maximum_length = 20
+maximum_length = 100
 output_posterior_pL = False
 
 
@@ -45,7 +45,7 @@ def expOppNeed(pL, pT, pG, pS, threshold, p_path=1, eita=0.0001, length=0, use_p
     p_c_pLnext = (1-pL)*pT*pG + (1-pS)*pL
     p_c_pnLnext = pG * (1 - pT) * (1 - pL)
     p_Lnext_given_c = p_c_pLnext / (p_c_pLnext + p_c_pnLnext)
-    p_path_c =  p_c_given_pL
+    p_path_c = p_path * p_c_given_pL
 
     EO_c = expOppNeed(p_Lnext_given_c, pT, pG, pS, threshold, p_path=p_path_c, length=length)
 
@@ -60,7 +60,7 @@ def expOppNeed(pL, pT, pG, pS, threshold, p_path=1, eita=0.0001, length=0, use_p
     #p_w_pnLnext = (1 - pG) * (1 - pT) * (1 - pL)
     p_w_pnLnext = (1-pL)*(1-pT)*(1-pG) + 0
     p_Lnext_given_w = p_w_pLnext /  (p_w_pLnext + p_w_pnLnext)
-    p_path_w =  p_w_given_pL
+    p_path_w = p_path * p_w_given_pL
     EO_w = expOppNeed(p_Lnext_given_w, pT, pG, pS, threshold, p_path=p_path_w, length=length)
 
     effort = (1 + p_c_given_pL *EO_c + p_w_given_pL * EO_w)#(1 + p_c_given_pL*EO_c*flag + p_w_given_pL * EO_w* flag)
