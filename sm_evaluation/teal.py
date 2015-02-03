@@ -1,4 +1,6 @@
 __author__ = 'hy'
+import numpy as np
+
 
 novice = "novice"
 master = "master"
@@ -66,6 +68,16 @@ def forward_synthetic(t, k0, learning_rate, guess, slip, forget=0):
     print pk
 
 
+def theoretical_pcorrect(k0, learning_rate, guess, slip, j):
+    A = (1 - slip - guess) * (1 - k0)
+    base = ( 1 - learning_rate )
+    return 1 - slip - ( A * np.power(base,  j) )
+
+def theoretical_mastery(k0, learning_rate,  j):
+    A = (1 - k0)
+    base = ( 1 - learning_rate )
+    return 1  - ( A * np.power(base,  j) )
+
 
 def prepare_arrays(k0, learning_rate, guess, slip, forget):
     transmat     = {master:{master:-1, novice:-1}, novice:{master:-1, novice:-1}}
@@ -88,7 +100,20 @@ def prepare_arrays(k0, learning_rate, guess, slip, forget):
 
 
 def main():
-    forward_synthetic(t=5, k0=0.3, learning_rate=0.25, guess=0.3, slip=0.3)
+    sequence_length = 5
+
+    k0=0.3
+    l=0.25
+    g=0.3
+    s=0.3
+
+    forward_synthetic(t=5, k0=k0, learning_rate=l, guess=g, slip=s)
+
+    xs = np.arange(0,  sequence_length)
+    tcorrect = theoretical_pcorrect(k0=k0, learning_rate=l, guess=g, slip=s, j=xs)
+    tmastery = theoretical_mastery(k0=k0, learning_rate=l, j=xs)
+
+    print tcorrect
 
 
 if __name__ == "__main__":
@@ -108,26 +133,3 @@ if __name__ == "__main__":
 
     main(**cl)
 
-#threshold=0.6
-#0.2 0.3 0.1 0.1, maximum length 10: 5.587356
-#0.2 0.3 0.1 0.1, maximum length 20: 6.738366
-#0.2 0.3 0.1 0.1, maximum length 30: 6.984749
-#0.2 0.3 0.1 0.1, unlimited length: 7.05185265434
-
-#threshold=0.7
-#0.2 0.3 0.1 0.1, maximum length 10: 5.587356
-#0.2 0.3 0.1 0.1, maximum length 20:
-#0.2 0.3 0.1 0.1, maximum length 30:
-#0.2 0.3 0.1 0.1, unlimited length:
-
-#threshold=0.8
-#0.2 0.3 0.1 0.1, maximum length 10: 6.3517
-#0.2 0.3 0.1 0.1, maximum length 20:
-#0.2 0.3 0.1 0.1, maximum length 30:
-#0.2 0.3 0.1 0.1, unlimited length:
-
-#threshold=0.9
-#0.2 0.3 0.1 0.1, maximum length 10: 10
-#0.2 0.3 0.1 0.1, maximum length 20:
-#0.2 0.3 0.1 0.1, maximum length 30:
-#0.2 0.3 0.1 0.1, unlimited length:
