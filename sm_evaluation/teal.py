@@ -98,6 +98,11 @@ def prepare_arrays(k0, learning_rate, guess, slip, forget):
     return transmat, emissionprob, startprob
 
 
+def theoretical_effort (k0, learning_rate, guess, slip, pcorrect):
+    A = (1 - slip - guess) * (1 - k0)
+    base = ( 1 - learning_rate  )
+    return np.log( (- pcorrect + 1 - slip ) /  A  ) / np.log( 1 - learning_rate )
+
 
 def main():
     sequence_length = 5
