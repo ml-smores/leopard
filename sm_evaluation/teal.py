@@ -1,6 +1,6 @@
 __author__ = 'hy'
 import numpy as np
-
+from collections import OrderedDict
 
 novice = "novice"
 master = "master"
@@ -79,46 +79,146 @@ def theoretical_mastery(k0, learning_rate,  j):
     return 1  - ( A * np.power(base,  j) )
 
 
-def prepare_arrays(k0, learning_rate, guess, slip, forget):
-    transmat     = {master:{master:-1, novice:-1}, novice:{master:-1, novice:-1}}
-    emissionprob = {master:{incorrect:-1, correct:-1}, novice:{incorrect:-1, correct:-1}}
-    startprob    = {master:-1, novice:-1}
 
+def theoretical_pcorrect1(k0, learning_rate, guess, slip, t):
+     return 0.5
+
+
+def effort(k0, learning_rate, guess, slip, threshold, T, t=0, p_sequence=1, dummy=""):
+    if np.isnan(effort_threshold(k0, learning_rate, guess, slip, threshold)):
+        raise RuntimeWarning("The effort may be infinite")
+
+    p_c_given_pk = guess * (1 - k0) + (1 - slip) * k0
+
+    #if p_sequence < epsilon: #not that important, imho:
+    #    #print dummy, "-"
+    #    return 0
+    if p_c_given_pk > threshold or t >= T:
+        #print dummy, t, "{:.2f}".format(p_c_given_pk), "{:.2f}".format(t * p_sequence)
+        return t * p_sequence
+    else:
+        # correct:
+        p_c_pLnext = (1-k0)*learning_rate*guess + (1-slip)*k0
+        p_c_pnLnext = guess * (1 - learning_rate) * (1 - k0)
+        ck0 = p_c_pLnext / (p_c_pLnext + p_c_pnLnext)
+
+        # incorrect:
+        p_w_pLnext = (1-k0)*learning_rate*(1-guess) + slip*k0
+        p_w_pnLnext = (1-k0)*(1-learning_rate)*(1-guess) + 0
+        wk0 = p_w_pLnext /  (p_w_pLnext + p_w_pnLnext)
+
+
+        return effort(ck0, learning_rate, guess, slip, threshold,  T, t+1, p_c_given_pk * p_sequence, dummy+"1") + \
+               effort(wk0, learning_rate, guess, slip, threshold,  T, t+1, (1-p_c_given_pk) * p_sequence, dummy+"0")
+
+
+
+def expOppNeed(pL, pT, pG, pS, threshold, p_path=1, eita=0.0001, length=0, use_pL_to_judge_mastery=False):#0.0000001):
+    verbose=True
+    maximum_length = 50
+
+    length += 1
+    p_c_given_pL = pG * (1 - pL) + (1 - pS) * pL #not p(C|K)!
+
+    if verbose:
+        print "{}\tp_path: {:.2f},  pL:{:.2f}, pC:{:.2f}".format( length, p_path, pL, p_c_given_pL)
+
+    # Stopping conditions:
+    if (p_path < eita) or (maximum_length > 0 and length >= maximum_length):  # simulation has gone too long
+        if verbose:
+            print length, "\tend 0"
+        return 0
+    elif (use_pL_to_judge_mastery and pL >= threshold) or ( not use_pL_to_judge_mastery and p_c_given_pL >= threshold): # mastery reached
+        if verbose:
+            print length, "\tend 1"
+        return 1
+
+    # Continue:
+    #p_c_pLnext = (1 - pS) * (pL + pT * (1 - pL))
+    p_c_pLnext = (1-pL)*pT*pG + (1-pS)*pL
+    p_c_pnLnext = pG * (1 - pT) * (1 - pL)
+    p_Lnext_given_c = p_c_pLnext / (p_c_pLnext + p_c_pnLnext)
+    p_path_c = p_path * p_c_given_pL
+    #p_path_c =  p_c_given_pL
+
+    EO_c = expOppNeed(p_Lnext_given_c, pT, pG, pS, threshold, p_path=p_path_c, length=length)
+
+    #JPG
+    p_w_given_pL = 1 - p_c_given_pL
+    #p_w_given_pL = (1 - pG) * (1 - pL) + pS * pL
+    #assert( p_w_given_pL ==  1 - p_c_given_pL)
+    #print p_w_given_pL + p_c_given_pL
+
+    #p_w_pLnext = pS * (pL + pT * (1 - pL))
+    p_w_pLnext = (1-pL)*pT*(1-pG) + pS*pL
+    #p_w_pnLnext = (1 - pG) * (1 - pT) * (1 - pL)
+    p_w_pnLnext = (1-pL)*(1-pT)*(1-pG) + 0
+    p_Lnext_given_w = p_w_pLnext /  (p_w_pLnext + p_w_pnLnext)
+    p_path_w = p_path * p_w_given_pL
+    #p_path_w =   p_w_given_pL
+    EO_w = expOppNeed(p_Lnext_given_w, pT, pG, pS, threshold, p_path=p_path_w, length=length)
+
+    effort = (1 + p_c_given_pL *EO_c + p_w_given_pL * EO_w)#(1 + p_c_given_pL*EO_c*flag + p_w_given_pL * EO_w* flag)
+    if verbose:
+        print "*  {}  {:.3f}  {:.3f}  | {}".format(length, pL, p_c_given_pL, effort)
+    return effort
+
+def prepare_arrays(k0, learning_rate, guess, slip, forget):
+
+    transmat     = OrderedDict()
+    emissionprob = OrderedDict()
+    startprob    = OrderedDict()
+
+    transmat[novice] = OrderedDict()
+    transmat[master] = OrderedDict()
+    transmat[novice][novice]    = 1- learning_rate
+    transmat[novice][master]     = learning_rate
     transmat[master][novice] = forget
     transmat[master][master]  = 1-forget
-    transmat[novice][master]     = learning_rate
-    transmat[novice][novice]    = 1- learning_rate
-    emissionprob[novice][correct]    = guess
+
+    emissionprob[novice] = OrderedDict()
+    emissionprob[master] = OrderedDict()
     emissionprob[novice][incorrect]  = 1-guess
+    emissionprob[novice][correct]    = guess
     emissionprob[master][incorrect]  = slip
     emissionprob[master][correct]    = 1-slip
-    startprob[master] = k0
+
     startprob[novice] = 1 - k0
+    startprob[master] = k0
+
 
     return transmat, emissionprob, startprob
 
 
-def theoretical_effort (k0, learning_rate, guess, slip, pcorrect):
+def effort_threshold (k0, learning_rate, guess, slip, pcorrect):
     A = (1 - slip - guess) * (1 - k0)
     base = ( 1 - learning_rate  )
-    return np.log( (- pcorrect + 1 - slip ) /  A  ) / np.log( 1 - learning_rate )
+    if A  == 0:
+        return float('NaN')
+    return np.log( (- pcorrect + 1 - slip ) /  A  ) / np.log( base )
 
 
 def main():
     sequence_length = 5
 
-    k0=0.3
-    l=0.25
-    g=0.3
-    s=0.3
+    k0 = 0.3
+    l = 0.1
+    g = 0.01
+    s = 0.01
+    # theoretical_effort(k0=k0, learning_rate=l, guess=g, slip=s, threshold= 0.6)
+    print score(k0=0.3, learning_rate=0.25, guess=0.3, slip=0.4, threshold=0.5, T=10)
 
-    forward_synthetic(t=5, k0=k0, learning_rate=l, guess=g, slip=s)
 
-    xs = np.arange(0,  sequence_length)
-    tcorrect = theoretical_pcorrect(k0=k0, learning_rate=l, guess=g, slip=s, j=xs)
-    tmastery = theoretical_mastery(k0=k0, learning_rate=l, j=xs)
+    #expOppNeed(pL=k0, pT=l, pG=g, pS=s, threshold=0.6)
+    #print effort(k0, learning_rate=l, guess=g, slip=s, threshold=0.6)
 
-    print tcorrect
+    #forward_synthetic(t=5, k0=k0, learning_rate=l, guess=g, slip=s)
+
+    #xs = np.arange(0,  sequence_length)
+    #tcorrect = theoretical_pcorrect(k0=k0, learning_rate=l, guess=g, slip=s, j=xs)
+    #tmastery = theoretical_mastery(k0=k0, learning_rate=l, j=xs)
+
+    #print tcorrect
 
 
 if __name__ == "__main__":
