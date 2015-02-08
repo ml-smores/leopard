@@ -85,7 +85,7 @@ def theoretical_pcorrect1(k0, learning_rate, guess, slip, t):
      return 0.5
 
 
-def generate_all_sequences(k0, learning_rate, guess, slip, threshold, T, t=0, p_sequence=1, stop=False, effort=0, outcome=0,n=0, dummy=""):
+def generate_all_sequences(k0, learning_rate, guess, slip, threshold, T, t=0, p_sequence=1, already_stop=False, effort=0, outcome=0,n=0, dummy=""):
     if t ==0 and np.isnan(effort_threshold(k0, learning_rate, guess, slip, threshold)):
         warnings.warn("The effort may be infinite",  RuntimeWarning)
 
@@ -101,23 +101,27 @@ def generate_all_sequences(k0, learning_rate, guess, slip, threshold, T, t=0, p_
     wk0 = p_w_pLnext / (p_w_pLnext + p_w_pnLnext)
 
     if t > T:
-        if not stop:
+        if n == 0: #not already_stop:
             out = 0
             students = 0
             effort = T
         else:
             out = outcome * p_sequence/n
+
             students = p_sequence
         return (effort * p_sequence, out, students)
-    elif p_c_given_pk > threshold:
-        outcome += 0 if (dummy == "") else (dummy[-1] == "1")
-        n += 1
-        if not stop: # is this the first time the threshold was hit?
+    elif already_stop or p_c_given_pk > threshold:
+        if  already_stop: #instruction would have been stopped
+            outcome += 0 if (dummy == "") else (dummy[-1] == "1") # outcome += 1 <-- should add to T
+            n += 1
+        else: # first time instruction is stopped
             effort = t
-            stop = True
+            already_stop = True
 
-    (ec, oc, sc) = generate_all_sequences(ck0, learning_rate, guess, slip, threshold, T, t + 1, p_c_given_pk * p_sequence, stop, effort, outcome, n,dummy + "1")
-    (ew, ow, sw) = generate_all_sequences(wk0, learning_rate, guess, slip, threshold, T, t + 1, (1 - p_c_given_pk) * p_sequence, stop, effort, outcome, n, dummy + "0")
+
+
+    (ec, oc, sc) = generate_all_sequences(ck0, learning_rate, guess, slip, threshold, T, t + 1, p_c_given_pk * p_sequence, already_stop, effort, outcome, n,dummy + "1")
+    (ew, ow, sw) = generate_all_sequences(wk0, learning_rate, guess, slip, threshold, T, t + 1, (1 - p_c_given_pk) * p_sequence, already_stop, effort, outcome, n, dummy + "0")
     return (ec+ew, oc+ow, sc+sw)
 
 
@@ -227,7 +231,7 @@ def main():
     g = 0.1
     s = 0.1
     # theoretical_effort(k0=k0, learning_rate=l, guess=g, slip=s, threshold= 0.6)
-    print generate_all_sequences(k0=k0, learning_rate=l, guess=g, slip=s, threshold=0.2, T=15)
+    print generate_all_sequences(k0=k0, learning_rate=l, guess=g, slip=s, threshold=0.9, T=15)
 
 
     #expOppNeed(pL=k0, pT=l, pG=g, pS=s, threshold=0.6)
