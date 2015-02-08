@@ -1,6 +1,7 @@
 __author__ = 'hy'
 import numpy as np
 from collections import OrderedDict
+import warnings
 
 novice = "novice"
 master = "master"
@@ -84,32 +85,41 @@ def theoretical_pcorrect1(k0, learning_rate, guess, slip, t):
      return 0.5
 
 
-def effort(k0, learning_rate, guess, slip, threshold, T, t=0, p_sequence=1, dummy=""):
-    if np.isnan(effort_threshold(k0, learning_rate, guess, slip, threshold)):
-        raise RuntimeWarning("The effort may be infinite")
+def generate_all_sequences(k0, learning_rate, guess, slip, threshold, T, t=0, p_sequence=1, stop=False, effort=0, outcome=0,n=0, dummy=""):
+    if t ==0 and np.isnan(effort_threshold(k0, learning_rate, guess, slip, threshold)):
+        warnings.warn("The effort may be infinite",  RuntimeWarning)
 
+    # correct:
     p_c_given_pk = guess * (1 - k0) + (1 - slip) * k0
+    p_c_pLnext = (1 - k0) * learning_rate * guess + (1 - slip) * k0
+    p_c_pnLnext = guess * (1 - learning_rate) * (1 - k0)
+    ck0 = p_c_pLnext / (p_c_pLnext + p_c_pnLnext)
 
-    #if p_sequence < epsilon: #not that important, imho:
-    #    #print dummy, "-"
-    #    return 0
-    if p_c_given_pk > threshold or t >= T:
-        #print dummy, t, "{:.2f}".format(p_c_given_pk), "{:.2f}".format(t * p_sequence)
-        return t * p_sequence
-    else:
-        # correct:
-        p_c_pLnext = (1-k0)*learning_rate*guess + (1-slip)*k0
-        p_c_pnLnext = guess * (1 - learning_rate) * (1 - k0)
-        ck0 = p_c_pLnext / (p_c_pLnext + p_c_pnLnext)
+    # incorrect:
+    p_w_pLnext = (1 - k0) * learning_rate * (1 - guess) + slip * k0
+    p_w_pnLnext = (1 - k0) * (1 - learning_rate) * (1 - guess) + 0
+    wk0 = p_w_pLnext / (p_w_pLnext + p_w_pnLnext)
 
-        # incorrect:
-        p_w_pLnext = (1-k0)*learning_rate*(1-guess) + slip*k0
-        p_w_pnLnext = (1-k0)*(1-learning_rate)*(1-guess) + 0
-        wk0 = p_w_pLnext /  (p_w_pLnext + p_w_pnLnext)
+    if t > T:
+        if not stop:
+            out = 0
+            students = 0
+            effort = T
+        else:
+            out = outcome * p_sequence/n
+            students = p_sequence
+        return (effort * p_sequence, out, students)
+    elif p_c_given_pk > threshold:
+        outcome += 0 if (dummy == "") else (dummy[-1] == "1")
+        n += 1
+        if not stop: # is this the first time the threshold was hit?
+            effort = t
+            stop = True
 
+    (ec, oc, sc) = generate_all_sequences(ck0, learning_rate, guess, slip, threshold, T, t + 1, p_c_given_pk * p_sequence, stop, effort, outcome, n,dummy + "1")
+    (ew, ow, sw) = generate_all_sequences(wk0, learning_rate, guess, slip, threshold, T, t + 1, (1 - p_c_given_pk) * p_sequence, stop, effort, outcome, n, dummy + "0")
+    return (ec+ew, oc+ow, sc+sw)
 
-        return effort(ck0, learning_rate, guess, slip, threshold,  T, t+1, p_c_given_pk * p_sequence, dummy+"1") + \
-               effort(wk0, learning_rate, guess, slip, threshold,  T, t+1, (1-p_c_given_pk) * p_sequence, dummy+"0")
 
 
 
@@ -193,20 +203,31 @@ def prepare_arrays(k0, learning_rate, guess, slip, forget):
 def effort_threshold (k0, learning_rate, guess, slip, pcorrect):
     A = (1 - slip - guess) * (1 - k0)
     base = ( 1 - learning_rate  )
-    if A  == 0:
+
+    eps = 1e-5
+
+    if abs(A)  <= eps:
         return float('NaN')
-    return np.log( (- pcorrect + 1 - slip ) /  A  ) / np.log( base )
+    elif abs(base) <= eps:
+        return float('NaN')
+
+    numerator = (- pcorrect + 1 - slip ) /  A
+
+    if numerator <0 + eps:
+        return float('NaN')
+
+    return np.log( numerator  ) / np.log( base )
 
 
 def main():
     sequence_length = 5
 
     k0 = 0.3
-    l = 0.1
-    g = 0.01
-    s = 0.01
+    l = 0.2
+    g = 0.1
+    s = 0.1
     # theoretical_effort(k0=k0, learning_rate=l, guess=g, slip=s, threshold= 0.6)
-    print score(k0=0.3, learning_rate=0.25, guess=0.3, slip=0.4, threshold=0.5, T=10)
+    print generate_all_sequences(k0=k0, learning_rate=l, guess=g, slip=s, threshold=0.2, T=15)
 
 
     #expOppNeed(pL=k0, pT=l, pG=g, pS=s, threshold=0.6)
