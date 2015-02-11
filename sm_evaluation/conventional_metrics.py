@@ -4,7 +4,7 @@ import numpy as np
 from scipy import stats
 
 # def compute_standard_metrics(df):
-#     auc = float('nan')
+# auc = float('nan')
 #     if df['outcome'].nunique() > 1:
 #         fprs, tprs, thresholds = metrics.roc_curve(df['outcome'], df['predicted_outcome'])
 #         auc = metrics.auc(fprs, tprs)
@@ -18,28 +18,24 @@ from scipy import stats
 #     return standard_metrics
 
 
-def compute_standard_metrics(df, detail=True):
+def compute_standard_metrics(df, kc=False, user=False):
     auc = float('nan')
     if df['outcome'].nunique() > 1:
         fprs, tprs, thresholds = metrics.roc_curve(df['outcome'], df['predicted_outcome'])
         auc = metrics.auc(fprs, tprs)
     pct_correct = sum(df['outcome']) / (1.0 * len(df['outcome']))
-    accuracy = float('nan')
-    fmeasure = float('nan')
-    log_loss = float('nan')
-    rmse = float('nan')
-    r2 = float('nan')
-    mean_auc_by_kc = float('nan')
-    mean_auc_by_user = float('nan')
 
-    if detail:
-        accuracy = metrics.accuracy_score(df['outcome'], df['predicted_outcome'] >= 0.5)
-        fmeasure = metrics.f1_score(df['outcome'], df['predicted_outcome'] >= 0.5, average=None)[1]  #for the correct class
-        mean_sq_error = metrics.mean_squared_error(df['outcome'], df['predicted_outcome'])
-        rmse = np.sqrt(mean_sq_error)
-        r2 = metrics.r2_score(df['outcome'], df['predicted_outcome'])
-        df['predicted'] = df['predicted_outcome'].apply(lambda x: [x, 1-x])
-        log_loss = metrics.log_loss(df['outcome'].tolist(), df['predicted'].tolist())
+
+    accuracy = metrics.accuracy_score(df['outcome'], df['predicted_outcome'] >= 0.5)
+    fmeasure = metrics.f1_score(df['outcome'], df['predicted_outcome'] >= 0.5, average=None)[1]  #for the correct class
+    mean_sq_error = metrics.mean_squared_error(df['outcome'], df['predicted_outcome'])
+    rmse = np.sqrt(mean_sq_error)
+    r2 = metrics.r2_score(df['outcome'], df['predicted_outcome'])
+    df['predicted'] = df['predicted_outcome'].apply(lambda x: [x, 1 - x])
+    log_loss = metrics.log_loss(df['outcome'].tolist(), df['predicted'].tolist())
+
+    mean_auc_by_kc = -1
+    if kc:
         auc_by_kc = []
         for kc in df["kc"].unique():
             df_kc = df[df["kc"] == kc]
@@ -49,6 +45,9 @@ def compute_standard_metrics(df, detail=True):
                 kc_auc = metrics.auc(fprs, tprs)
                 auc_by_kc.append(kc_auc)
         mean_auc_by_kc = np.mean(auc_by_kc)
+
+    mean_auc_by_user = -1
+    if user:
         auc_by_user = []
         for user in df["student"].unique():
             df_user = df[df["student"] == user]
@@ -58,5 +57,6 @@ def compute_standard_metrics(df, detail=True):
                 user_auc = metrics.auc(fprs, tprs)
                 auc_by_user.append(user_auc)
         mean_auc_by_user = np.mean(auc_by_user)
+
 
     return auc, pct_correct, accuracy, fmeasure, log_loss, rmse, r2, mean_auc_by_kc, mean_auc_by_user

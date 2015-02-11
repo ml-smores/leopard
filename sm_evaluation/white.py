@@ -38,18 +38,25 @@ class White:
 
             # Fill missing values (that occur when a student doesn't have transitions)
             if fill_missing:
+                # On NIPS paper we did this:
                 for c in df_kc.columns:
                     if "_pre" in c:
                         opposite = c.replace("_pre", "_pos")
                     else:
                         opposite = c.replace("_pos", "_pre")
                     df_kc[c] = df_kc[c].fillna(value= df_kc[opposite])
+                #Alternative way for filling missing values
+                #df_kc["effort_pos"] = df_kc["effort_pos"].fillna(df_kc["effort_pre"])
+                #df_kc["correct_pos"] = df_kc["correct_pos"].fillna(0)
+                #df_kc["n_pos"] = df_kc["n_pos"].fillna(0)
+
 
             # Store individual values:
             self.detail[g]["mastery"]  = sum(df_kc["mastered"] == True)
             self.detail[g]["mastery%"] = sum(df_kc["mastered"] == True) / (len(df_kc) + .0)
             self.detail[g]["effort"] =  df_kc["effort_pos"].describe()
             self.detail[g]["score_student"] =  (df_kc["correct_pos"] / df_kc["n_pos"]).describe()
+
             self.detail[g]["score"] =  df_kc["correct_pos"].sum() / df_kc["n_pos"].sum()
 
             # Store aggregate values:

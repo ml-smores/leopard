@@ -227,11 +227,12 @@ def main():
     sequence_length = 5
 
     k0 = 0.3
-    l = 0.2
-    g = 0.1
-    s = 0.1
+    l = 0.25
+    g = 0.3
+    s = 0.3
     # theoretical_effort(k0=k0, learning_rate=l, guess=g, slip=s, threshold= 0.6)
-    print generate_all_sequences(k0=k0, learning_rate=l, guess=g, slip=s, threshold=0.9, T=15)
+    print generate_all_sequences(k0=k0, learning_rate=l, guess=g, slip=s, threshold=0.9, T=10)
+
 
 
     #expOppNeed(pL=k0, pT=l, pG=g, pS=s, threshold=0.6)
