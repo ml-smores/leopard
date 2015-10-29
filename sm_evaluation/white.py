@@ -1,6 +1,6 @@
 
 class White:
-    def __init__(self, policy):
+    def __init__(self, policy, fill_missing=True, execute=True):
         self.policy = policy
         self.detail = {}
         self.effort = 0
@@ -10,7 +10,9 @@ class White:
 
         self.score_kcs = 0
         self.effort_filled = 0
-        self.evaluate()
+
+        if execute:
+            self.evaluate(fill_missing)
         #self.ratio = 0
 
 
@@ -27,7 +29,7 @@ class White:
         ans += "overall score: {:.2f} ".format(self.score_students) + "\noverall effort: {:.2f} ".format(self.effort)
         return ans
 
-    def evaluate(self, fill_missing=True):
+    def evaluate(self, fill_missing):
         df = self.policy.simulate()
         df_kcs = df.groupby("id")
 
@@ -68,5 +70,6 @@ class White:
         self.score_students /= len(df_kcs)
         self.mastery /= len(df_kcs)
         self.mastery_pct /= len(df_kcs)
+        return df_kcs
 
 
