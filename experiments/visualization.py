@@ -85,13 +85,13 @@ class WhiteVisualization():
             df = pd.DataFrame({"kcs":kc_list, title:list_values}) #"sm_evaluation":white_list
             df.to_csv("../example_data/synthetic_data_" + title + ".csv")
 
-            print "*** Plotting histagram for", title, " *** "
+            print("*** Plotting histagram for", title, " *** ")
             fig, ax = pl.subplots()
             max_ = max(list_values)
             min_ = min(list_values)
             nb_bins = 20
             bin_size = ( max_ - min_ ) / nb_bins
-            print "max=", max_, "\tmin=", min_, "\t#bins=", nb_bins, "\tbin_size=", bin_size
+            print("max=", max_, "\tmin=", min_, "\t#bins=", nb_bins, "\tbin_size=", bin_size)
             fig.subplots_adjust(bottom=0.1)
             bins=np.arange(int(min_), max_+bin_size, bin_size)
             ax.hist(list_values, bins=bins)  #, align='left')
@@ -210,7 +210,7 @@ class WhiteVisualization():
 
         if figure is None:
             out_file = figure_path + (ylabel.replace("/", "_over_") + "_" + xlabel + "_{}.pdf").format(kc)
-            print "outputting to ", out_file
+            print("outputting to ", out_file)
             pl.savefig(out_file)
             pl.close(fig)
         return fig
@@ -256,7 +256,7 @@ class WhiteVisualization():
             plot_component_relation("all", thresholds, ratios, figure_path, "threshold", "score/effort", [self.white_obj.integral_lower_bound, 1], [0, max(ratios)], nb_students=students, nb_kcs=nb_kcs) #
             plot_component_relation("all", thresholds, students, figure_path, "threshold", "students", [self.white_obj.integral_lower_bound, 1], nb_students=students, nb_kcs=nb_kcs) #
         else:
-            print "ERROR: Please reconfigure!"
+            print("ERROR: Please reconfigure!")
             exit(-1)
     #
     # def get_after_integral_lower_bound(self, thresholds, scores, practices, ratios=None, students=None):
@@ -285,13 +285,13 @@ def plot_histogram_from_file():
         list_values = xs[pos]
         title = titles[pos]
 
-        print "*** Plotting histagram for", title, " *** "
+        print("*** Plotting histagram for", title, " *** ")
         fig, ax = pl.subplots()
         max_ = max(list_values)
         min_ = min(list_values)
         nb_bins = 10
         bin_size = ( max_ - min_ ) / nb_bins
-        print "max=", max_, "\tmin=", min_, "\t#bins=", nb_bins, "\tbin_size=", bin_size
+        print("max=", max_, "\tmin=", min_, "\t#bins=", nb_bins, "\tbin_size=", bin_size)
 
         if title == "auc" or title == "score":
             min_ = round(min_, 2)
@@ -302,7 +302,7 @@ def plot_histogram_from_file():
             max_ = int(math.ceil(max_))
             bin_size = int(bin_size)
 
-        print "max=", max_, "\tmin=", min_, "\t#bins=", nb_bins, "\tbin_size=", bin_size
+        print("max=", max_, "\tmin=", min_, "\t#bins=", nb_bins, "\tbin_size=", bin_size)
         pl.xlim([min_, max_])
         fig.subplots_adjust(bottom=0.2)
         bins=np.arange(min_, max_+bin_size*1.1, bin_size)
@@ -391,7 +391,7 @@ def plot_multiple_scatterplot_from_files(files, legends, colors, out_figure_path
         # loc='upper center', bbox_to_anchor=(0.5, -0.05),  ncol=2)
 
     out_file = out_figure_path + (ylabel.replace("/", "_over_") + "_" + xlabel + "_{}.pdf").format(kc)
-    print "outputting to ", out_file
+    print("outputting to ", out_file)
     pl.savefig(out_file)
     pl.close(fig)
 
@@ -451,7 +451,7 @@ def plot_multiple_scatterplot(data, legends, colors, out_figure_path, chapter=10
         pl.axhline(y=yconstant, color="red", linewidth=1)#, ymin, ymax
 
     out_file = out_figure_path + (ylabel.replace("/", "_over_") + "_" + xlabel + "_{}.pdf").format(kc)
-    print "outputting to ", out_file
+    print("outputting to ", out_file)
     pl.savefig(out_file)
     pl.close(fig)
 
@@ -471,7 +471,7 @@ def main():
 if __name__ == "__main__":
     import sys
     args = sys.argv
-    print args
+    print(args)
     cl = {}
     for i in range(1, len(args)): # index 0 is the filename
         pair  =  args[i].split('=')

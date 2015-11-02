@@ -42,10 +42,10 @@ def forward_synthetic(t, k0, learning_rate, guess, slip, forget=0):
     outputs= emission.items()[0][1].keys()
     states = emission.keys()
 
-    print "init=", initial
-    print "emit=", emission
-    print "trans=", transition
-    print "alphabet=", outputs
+    print("init=", initial)
+    print("emit=", emission)
+    print("trans=", transition)
+    print("alphabet=", outputs)
 
     forward_synthetic_aux.memo = {}
 
@@ -55,8 +55,8 @@ def forward_synthetic(t, k0, learning_rate, guess, slip, forget=0):
         for o1 in outputs:
             result = forward_synthetic_aux(t,k1, o1, initial, emission, transition)
             a.append(result)
-            print "*", k1, o1, result
-    print sum(a)
+            print("*", k1, o1, result)
+    print(sum(a))
     pc = [0] * (t+1)
     pk = [0] * (t+1)
     for ((t1, s1, e1), p) in forward_synthetic_aux.memo.iteritems():
@@ -65,8 +65,8 @@ def forward_synthetic(t, k0, learning_rate, guess, slip, forget=0):
         if e1 == correct:
             pc[t1] += p
 
-    print pc
-    print pk
+    print(pc)
+    print(pk)
 
 
 def theoretical_pcorrect(k0, learning_rate, guess, slip, j):
@@ -135,16 +135,16 @@ def expOppNeed(pL, pT, pG, pS, threshold, p_path=1, eita=0.0001, length=0, use_p
     p_c_given_pL = pG * (1 - pL) + (1 - pS) * pL #not p(C|K)!
 
     if verbose:
-        print "{}\tp_path: {:.2f},  pL:{:.2f}, pC:{:.2f}".format( length, p_path, pL, p_c_given_pL)
+        print("{}\tp_path: {:.2f},  pL:{:.2f}, pC:{:.2f}".format( length, p_path, pL, p_c_given_pL))
 
     # Stopping conditions:
     if (p_path < eita) or (maximum_length > 0 and length >= maximum_length):  # simulation has gone too long
         if verbose:
-            print length, "\tend 0"
+            print(length, "\tend 0")
         return 0
     elif (use_pL_to_judge_mastery and pL >= threshold) or ( not use_pL_to_judge_mastery and p_c_given_pL >= threshold): # mastery reached
         if verbose:
-            print length, "\tend 1"
+            print(length, "\tend 1")
         return 1
 
     # Continue:
@@ -174,7 +174,7 @@ def expOppNeed(pL, pT, pG, pS, threshold, p_path=1, eita=0.0001, length=0, use_p
 
     effort = (1 + p_c_given_pL *EO_c + p_w_given_pL * EO_w)#(1 + p_c_given_pL*EO_c*flag + p_w_given_pL * EO_w* flag)
     if verbose:
-        print "*  {}  {:.3f}  {:.3f}  | {}".format(length, pL, p_c_given_pL, effort)
+        print("*  {}  {:.3f}  {:.3f}  | {}".format(length, pL, p_c_given_pL, effort))
     return effort
 
 def prepare_arrays(k0, learning_rate, guess, slip, forget):
@@ -231,7 +231,7 @@ def main():
     g = 0.3
     s = 0.3
     # theoretical_effort(k0=k0, learning_rate=l, guess=g, slip=s, threshold= 0.6)
-    print generate_all_sequences(k0=k0, learning_rate=l, guess=g, slip=s, threshold=0.9, T=10)
+    print(generate_all_sequences(k0=k0, learning_rate=l, guess=g, slip=s, threshold=0.9, T=10))
 
 
 
@@ -251,7 +251,7 @@ if __name__ == "__main__":
     import sys
 
     args = sys.argv
-    print args
+    print(args)
     cl = {}
     for i in range(1, len(args)):  # index 0 is the filename
         pair = args[i].split('=')

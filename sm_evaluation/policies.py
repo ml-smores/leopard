@@ -50,18 +50,18 @@ class SingleKCPolicy (WhitePolicy):
 
             decisions["mastered"] = mastered_rows
             if self.verbose:
-                print decisions
+                print(decisions)
 
             # calculate:
             pre = self.get_student_stats(decisions, False)
             pos = self.get_student_stats(decisions, True)
 
             if self.verbose:
-                print "===PRE==="
-                print pre
-                print "===POS==="
-                print pos
-                print "---------"
+                print("===PRE===")
+                print(pre)
+                print("===POS===")
+                print(pos)
+                print("---------")
 
 
             kc =  pre.join(pos, how="outer", rsuffix="_pos", lsuffix="_pre")
@@ -70,7 +70,7 @@ class SingleKCPolicy (WhitePolicy):
 
             ans.append(kc)
             if self.verbose:
-                print kc
+                print(kc)
 
         return pd.concat(ans)
 
@@ -100,7 +100,7 @@ class SingleKCPolicy (WhitePolicy):
 
         students = df.groupby("student")
 
-        ans = students.agg({ "boundary" : ['count', 'max'], "outcome": lambda(l): np.sum([e for e in l if e == 1]) })
+        ans = students.agg({ "boundary" : ['count', 'max'], "outcome": lambda l: np.sum([e for e in l if e == 1]) })
         ans.columns = ans.columns.get_level_values(1)
         ans = ans.rename(columns={"count"   :   "n",
                                   "max"     :   "effort",

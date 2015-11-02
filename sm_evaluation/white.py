@@ -1,3 +1,4 @@
+import numpy as np
 
 class White:
     def __init__(self, policy, fill_missing=True, execute=True):
@@ -59,7 +60,10 @@ class White:
             self.detail[g]["effort"] =  df_kc["effort_pos"].describe()
             self.detail[g]["score_student"] =  (df_kc["correct_pos"] / df_kc["n_pos"]).describe()
 
-            self.detail[g]["score"] =  df_kc["correct_pos"].sum() / df_kc["n_pos"].sum()
+            try:
+                self.detail[g]["score"] =  df_kc["correct_pos"].sum() / df_kc["n_pos"].sum()
+            except:
+                self.detail[g]["score"] = np.NaN
 
             # Store aggregate values:
             self.score_students += self.detail[g]["score_student"]["mean"]
